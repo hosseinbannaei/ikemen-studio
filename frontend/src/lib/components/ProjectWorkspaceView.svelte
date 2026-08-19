@@ -1,5 +1,7 @@
 <script lang="ts">
   import { projectStore } from '../stores/projectStore';
+  import type { VerificationReport } from '../types';
+  import VerifyReportModal from './VerifyReportModal.svelte';
   import {
     Play,
     Square,
@@ -22,6 +24,10 @@
 
   export let onBackToProjects: () => void;
 
+  let showVerifyModal = false;
+  let verificationReport: VerificationReport | null = null;
+  let isVerifying = false;
+
   const folderShortcuts = [
     { label: 'Characters', subpath: 'chars', icon: Users, desc: 'Fighter packages and .def files', color: 'from-blue-500/20 to-cyan-500/20 text-cyan-400 border-cyan-500/30' },
     { label: 'Stages', subpath: 'stages', icon: Mountain, desc: 'Background arenas and music defs', color: 'from-emerald-500/20 to-teal-500/20 text-emerald-400 border-emerald-500/30' },
@@ -29,6 +35,13 @@
     { label: 'Fonts', subpath: 'font', icon: Type, desc: 'Bitmap and TrueType font assets', color: 'from-purple-500/20 to-pink-500/20 text-purple-400 border-purple-500/30' },
     { label: 'Sound & Music', subpath: 'sound', icon: Music, desc: 'BGM tracks, hits, and announcer voices', color: 'from-rose-500/20 to-red-500/20 text-rose-400 border-rose-500/30' },
   ];
+
+  async function handleVerifyClick() {
+    showVerifyModal = true;
+    isVerifying = true;
+    verificationReport = await projectStore.verifyAndRepair();
+    isVerifying = false;
+  }
 
   function formatDate(d: string): string {
     if (!d) return '-';
@@ -112,12 +125,12 @@
 
           <button
             type="button"
-            disabled={$projectStore.isVerifying || isBusy}
+            disabled={isVerifying || isBusy}
             class="px-3.5 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 disabled:opacity-50 border border-dark-600/70 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
-            on:click={() => projectStore.verifyAndRepair()}
+            on:click={handleVerifyClick}
             title="Verify and repair core engine files (external scripts, shaders, DLLs)"
           >
-            {#if $projectStore.isVerifying}
+            {#if isVerifying}
               <Loader2 class="w-3.5 h-3.5 animate-spin text-indigo-400" />
               <span>Verifying...</span>
             {:else}
@@ -274,4 +287,13 @@
       </button>
     </div>
   </div>
+
+  <!-- Verification Report Modal -->
+  {#if showVerifyModal}
+    <VerifyReportModal
+      report={verificationReport}
+      isLoading={isVerifying}
+      onClose={() => (showVerifyModal = false)}
+    />
+  {/if}
 {/if}
