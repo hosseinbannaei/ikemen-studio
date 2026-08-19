@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 import type { ReleaseInfo, InstalledEngine, DownloadProgress } from '../types';
 import { FetchAvailableEngines, GetInstalledEngines, DownloadEngine, DeleteEngine } from '../../../wailsjs/go/main/App';
-import { EventsOn } from '../../../wailsjs/runtime/runtime';
+import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
 import { toastStore } from './toastStore';
 
 interface EngineState {
@@ -27,6 +27,10 @@ function createEngineStore() {
     if (eventsInitialized) return;
     try {
       if (typeof window !== 'undefined' && (window as any).runtime) {
+        try {
+          EventsOff('engine-download-progress');
+        } catch {}
+
         EventsOn('engine-download-progress', (progress: DownloadProgress) => {
           update((state) => {
             const downloads = { ...state.downloads, [progress.version]: progress };

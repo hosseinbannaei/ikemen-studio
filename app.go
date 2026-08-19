@@ -228,6 +228,9 @@ func (a *App) LaunchProject(projectDir string) error {
 		return fmt.Errorf("could not find Ikemen GO executable for engine version %s (path: %s)", manifest.Engine.Version, engineDir)
 	}
 
+	// Ensure runtime assets (external/script, lib DLLs, shaders, system data) are present in the project directory
+	_ = project.EnsureProjectRuntimeAssets(engineDir, projectDir)
+
 	runner := engine.GetProcessManager()
 	err = runner.Launch(execPath, projectDir, func(exitErr error) {
 		runtime.EventsEmit(a.ctx, "game-stopped", map[string]interface{}{

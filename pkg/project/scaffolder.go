@@ -64,6 +64,7 @@ func Scaffold(opts ScaffoldOptions) (*ProjectManifest, error) {
 		"data",
 		"font",
 		"sound",
+		"external",
 	}
 
 	for _, dir := range standardDirs {
@@ -73,10 +74,10 @@ func Scaffold(opts ScaffoldOptions) (*ProjectManifest, error) {
 		}
 	}
 
-	// 3. If engine path is provided, copy default base system assets (data, font, sound)
+	// 3. If engine path is provided, copy default base system assets (external, lib, data, font, sound, stages, video)
 	if opts.EnginePath != "" {
 		if fi, err := os.Stat(opts.EnginePath); err == nil && fi.IsDir() {
-			copyBaseEngineAssets(opts.EnginePath, opts.TargetDir)
+			_ = EnsureProjectRuntimeAssets(opts.EnginePath, opts.TargetDir)
 		}
 	}
 
@@ -109,9 +110,13 @@ func Scaffold(opts ScaffoldOptions) (*ProjectManifest, error) {
 	return manifest, nil
 }
 
-// copyBaseEngineAssets copies base folders like data, font, sound from engine if available
-func copyBaseEngineAssets(engineDir, projectDir string) {
-	foldersToCopy := []string{"data", "font", "sound"}
+// EnsureProjectRuntimeAssets ensures essential runtime folders (external scripts, lib DLLs, data, font, sound, video) exist in project
+func EnsureProjectRuntimeAssets(engineDir, projectDir string) error {
+	if engineDir == "" || projectDir == "" {
+		return nil
+	}
+
+	foldersToCopy := []string{"external", "lib", "data", "font", "sound", "stages", "video"}
 	for _, folder := range foldersToCopy {
 		srcFolder := filepath.Join(engineDir, folder)
 		if fi, err := os.Stat(srcFolder); err == nil && fi.IsDir() {
@@ -119,6 +124,7 @@ func copyBaseEngineAssets(engineDir, projectDir string) {
 			_ = copyDirRecursive(srcFolder, destFolder)
 		}
 	}
+	return nil
 }
 
 func copyDirRecursive(src, dest string) error {

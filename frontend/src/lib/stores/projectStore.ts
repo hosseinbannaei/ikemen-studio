@@ -10,7 +10,7 @@ import {
   IsProjectRunning,
   OpenFolderInExplorer,
 } from '../../../wailsjs/go/main/App';
-import { EventsOn } from '../../../wailsjs/runtime/runtime';
+import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
 import { toastStore } from './toastStore';
 
 interface ProjectState {
@@ -34,6 +34,11 @@ function createProjectStore() {
     if (eventsInitialized) return;
     try {
       if (typeof window !== 'undefined' && (window as any).runtime) {
+        try {
+          EventsOff('game-started');
+          EventsOff('game-stopped');
+        } catch {}
+
         EventsOn('game-started', (projectDir: string) => {
           update((s) => ({ ...s, isRunning: true }));
           toastStore.info('Game Started', 'Ikemen GO is running');
