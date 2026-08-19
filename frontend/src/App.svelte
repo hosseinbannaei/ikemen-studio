@@ -13,6 +13,7 @@
 
   import NewProjectModal from './lib/components/NewProjectModal.svelte';
   import OpenProjectModal from './lib/components/OpenProjectModal.svelte';
+  import CrashDiagnosticModal from './lib/components/CrashDiagnosticModal.svelte';
   import Toast from './lib/components/Toast.svelte';
 
   let activeTab: 'projects' | 'engines' | 'settings' = 'projects';
@@ -32,16 +33,8 @@
     }
   });
 
-  // Switch to workspace when a project is loaded
-  $: if ($projectStore.current && projectsSubView === 'list' && activeTab === 'projects') {
-    // Keep user in list if they intentionally navigated back, but allow easy switching
-  }
-
   function handleSelectTab(tab: 'projects' | 'engines' | 'settings') {
     activeTab = tab;
-    if (tab === 'projects' && $projectStore.current) {
-      // If user clicks Projects tab while on another tab, return to workspace or list
-    }
   }
 
   function handleOpenProjectWorkspace() {
@@ -121,6 +114,9 @@
   {#if showOpenProjectModal}
     <OpenProjectModal onClose={() => (showOpenProjectModal = false)} />
   {/if}
+
+  <!-- Crash Diagnostic Modal Alert -->
+  <CrashDiagnosticModal />
 
   <!-- Toast Notification Overlay -->
   <Toast />

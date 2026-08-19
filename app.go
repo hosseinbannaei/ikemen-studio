@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	goruntime "runtime"
@@ -238,6 +239,29 @@ func (a *App) SelectProjectDirectoryDialog() (string, error) {
 	})
 }
 
+// VerifyAndRepairProject validates core game assets against the configured engine and repairs missing files
+func (a *App) VerifyAndRepairProject(projectDir string) (*project.VerificationReport, error) {
+	manifest, err := project.LoadManifest(projectDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load project manifest: %w", err)
+	}
+
+	cfg, err := config.LoadSettings()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load settings: %w", err)
+	}
+
+	engineDir := filepath.Join(cfg.EnginesDir, manifest.Engine.Version)
+	return project.VerifyAndRepairProject(engineDir, projectDir)
+}
+
+// OpenProjectLogsFolder opens the project's save/logs directory in the OS file explorer
+func (a *App) OpenProjectLogsFolder(projectDir string) error {
+	logsDir := filepath.Join(projectDir, "save", "logs")
+	_ = os.MkdirAll(logsDir, 0755)
+	return a.OpenFolderInExplorer(logsDir)
+}
+
 func (a *App) addToRecentProjects(projectDir string, cfg *config.Settings) {
 	var updated []string
 	updated = append(updated, projectDir)
@@ -273,14 +297,23 @@ func (a *App) LaunchProject(projectDir string) error {
 		return fmt.Errorf("could not find Ikemen GO executable for engine version %s (path: %s)", manifest.Engine.Version, engineDir)
 	}
 
-	// Ensure runtime assets (external scripts, lib DLLs, etc.) exist in the project directory
-	_ = project.EnsureProjectRuntimeAssets(engineDir, projectDir)
-
 	runner := engine.GetProcessManager()
-	err = runner.Launch(execPath, projectDir, func(exitErr error, userTerminated bool) {
+	err = runner.Launch(execPath, projectDir, func(exitErr error, userTerminated bool, outputTail string, logFilePath string) {
+		isRealCrash := exitErr != nil && !userTerminated
+
+		if isRealCrash {
+			errSummary := engine.ExtractErrorSummary(outputTail)
+			runtime.EventsEmit(a.ctx, "game-crashed", map[string]interface{}{
+				"projectDir":   projectDir,
+				"errorSummary": errSummary,
+				"logFilePath":  logFilePath,
+				"canRepair":    true,
+			})
+		}
+
 		runtime.EventsEmit(a.ctx, "game-stopped", map[string]interface{}{
 			"projectDir":     projectDir,
-			"error":          exitErr != nil && !userTerminated,
+			"error":          isRealCrash,
 			"userTerminated": userTerminated,
 		})
 	})

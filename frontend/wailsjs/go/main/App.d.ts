@@ -28,6 +28,8 @@ export function OpenFolderInExplorer(arg1:string):Promise<void>;
 
 export function OpenProject(arg1:string):Promise<project.ProjectManifest>;
 
+export function OpenProjectLogsFolder(arg1:string):Promise<void>;
+
 export function SelectDirectoryDialog(arg1:string):Promise<string>;
 
 export function SelectProjectDirectoryDialog():Promise<string>;
@@ -35,3 +37,5 @@ export function SelectProjectDirectoryDialog():Promise<string>;
 export function StopProject(arg1:string):Promise<void>;
 
 export function UpdateSettings(arg1:config.Settings):Promise<void>;
+
+export function VerifyAndRepairProject(arg1:string):Promise<project.VerificationReport>;

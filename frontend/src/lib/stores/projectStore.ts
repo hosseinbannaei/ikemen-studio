@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import type { ProjectManifest, GameState } from '../types';
+import type { ProjectManifest, GameState, VerificationReport, CrashDiagnosticInfo } from '../types';
 import {
   CreateProject,
   OpenProject,
@@ -9,6 +9,8 @@ import {
   StopProject,
   IsProjectRunning,
   OpenFolderInExplorer,
+  VerifyAndRepairProject,
+  OpenProjectLogsFolder,
 } from '../../../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
 import { toastStore } from './toastStore';
@@ -18,8 +20,10 @@ interface ProjectState {
   recent: string[];
   isRunning: boolean;
   gameState: GameState;
-  canStop: boolean; // Cooldown flag before allowing stop
+  canStop: boolean;
   loading: boolean;
+  isVerifying: boolean;
+  activeCrash: CrashDiagnosticInfo | null;
 }
 
 let eventsInitialized = false;
@@ -33,6 +37,8 @@ function createProjectStore() {
     gameState: 'idle',
     canStop: false,
     loading: false,
+    isVerifying: false,
+    activeCrash: null,
   });
 
   function initEvents() {
@@ -42,6 +48,7 @@ function createProjectStore() {
         try {
           EventsOff('game-started');
           EventsOff('game-stopped');
+          EventsOff('game-crashed');
         } catch {}
 
         EventsOn('game-started', (projectDir: string) => {
@@ -50,15 +57,22 @@ function createProjectStore() {
             isRunning: true,
             gameState: 'running',
             canStop: false,
+            activeCrash: null,
           }));
 
-          // Grace period / cooldown before allowing force stop (1.5 seconds)
           if (stopCooldownTimer) clearTimeout(stopCooldownTimer);
           stopCooldownTimer = setTimeout(() => {
             update((s) => ({ ...s, canStop: true }));
           }, 1500);
 
           toastStore.info('Game Started', 'Ikemen GO is running');
+        });
+
+        EventsOn('game-crashed', (data: CrashDiagnosticInfo) => {
+          update((s) => ({
+            ...s,
+            activeCrash: data,
+          }));
         });
 
         EventsOn('game-stopped', (data: any) => {
@@ -72,7 +86,7 @@ function createProjectStore() {
 
           if (data?.userTerminated) {
             toastStore.info('Game Stopped', 'Game process terminated');
-          } else {
+          } else if (!data?.error) {
             toastStore.info('Game Closed', 'Ikemen GO session ended');
           }
         });
@@ -150,7 +164,7 @@ function createProjectStore() {
   }
 
   function close() {
-    update((s) => ({ ...s, current: null, isRunning: false, gameState: 'idle', canStop: false }));
+    update((s) => ({ ...s, current: null, isRunning: false, gameState: 'idle', canStop: false, activeCrash: null }));
   }
 
   async function launch(): Promise<void> {
@@ -163,6 +177,7 @@ function createProjectStore() {
         gameState: 'starting',
         isRunning: true,
         canStop: false,
+        activeCrash: null,
       };
     });
 
@@ -174,7 +189,6 @@ function createProjectStore() {
 
     try {
       await LaunchProject(currentPath);
-      // Wait for process initialization
       setTimeout(() => {
         update((s) => {
           if (s.gameState === 'starting') {
@@ -228,6 +242,65 @@ function createProjectStore() {
     }
   }
 
+  async function verifyAndRepair(projectDir?: string): Promise<VerificationReport | null> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+
+    if (!targetPath) {
+      toastStore.error('Verification Error', 'No project selected for verification');
+      return null;
+    }
+
+    update((s) => ({ ...s, isVerifying: true }));
+    try {
+      const report = await VerifyAndRepairProject(targetPath);
+      update((s) => ({ ...s, isVerifying: false }));
+
+      if (report.repairedCount > 0) {
+        toastStore.success(
+          'Verification Complete',
+          `Restored ${report.repairedCount} missing file${report.repairedCount > 1 ? 's' : ''} (Checked ${report.totalChecked} files)`
+        );
+      } else {
+        toastStore.success('Verification Complete', `All ${report.totalChecked} engine runtime files are intact`);
+      }
+
+      return report as any;
+    } catch (err: any) {
+      update((s) => ({ ...s, isVerifying: false }));
+      console.error('Verification failed:', err);
+      toastStore.error('Verification Failed', err?.message || 'Could not complete file verification');
+      return null;
+    }
+  }
+
+  async function openLogs(projectDir?: string): Promise<void> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+
+    if (!targetPath) return;
+
+    try {
+      await OpenProjectLogsFolder(targetPath);
+    } catch (err: any) {
+      toastStore.error('Logs Error', err?.message || 'Could not open logs folder');
+    }
+  }
+
+  function dismissCrash() {
+    update((s) => ({ ...s, activeCrash: null }));
+  }
+
   return {
     subscribe,
     initEvents,
@@ -239,6 +312,9 @@ function createProjectStore() {
     launch,
     stop,
     openFolder,
+    verifyAndRepair,
+    openLogs,
+    dismissCrash,
   };
 }
 

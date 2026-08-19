@@ -190,6 +190,30 @@ export namespace project {
 		    return a;
 		}
 	}
+	export class VerificationReport {
+	    totalChecked: number;
+	    missingCount: number;
+	    repairedCount: number;
+	    repairedFiles: string[];
+	    logFilePath: string;
+	    success: boolean;
+	    errorMessage?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new VerificationReport(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.totalChecked = source["totalChecked"];
+	        this.missingCount = source["missingCount"];
+	        this.repairedCount = source["repairedCount"];
+	        this.repairedFiles = source["repairedFiles"];
+	        this.logFilePath = source["logFilePath"];
+	        this.success = source["success"];
+	        this.errorMessage = source["errorMessage"];
+	    }
+	}
 
 }
 

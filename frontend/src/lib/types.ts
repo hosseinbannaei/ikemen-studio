@@ -58,6 +58,23 @@ export interface DownloadProgress {
 
 export type GameState = 'idle' | 'starting' | 'running' | 'stopping';
 
+export interface VerificationReport {
+  totalChecked: number;
+  missingCount: number;
+  repairedCount: number;
+  repairedFiles: string[];
+  logFilePath: string;
+  success: boolean;
+  errorMessage?: string;
+}
+
+export interface CrashDiagnosticInfo {
+  projectDir: string;
+  errorSummary: string;
+  logFilePath: string;
+  canRepair: boolean;
+}
+
 export interface ToastMessage {
   id: string;
   type: 'info' | 'success' | 'warning' | 'error';

@@ -50,6 +50,10 @@ export function OpenProject(arg1) {
   return window['go']['main']['App']['OpenProject'](arg1);
 }
 
+export function OpenProjectLogsFolder(arg1) {
+  return window['go']['main']['App']['OpenProjectLogsFolder'](arg1);
+}
+
 export function SelectDirectoryDialog(arg1) {
   return window['go']['main']['App']['SelectDirectoryDialog'](arg1);
 }
@@ -64,4 +68,8 @@ export function StopProject(arg1) {
 
 export function UpdateSettings(arg1) {
   return window['go']['main']['App']['UpdateSettings'](arg1);
+}
+
+export function VerifyAndRepairProject(arg1) {
+  return window['go']['main']['App']['VerifyAndRepairProject'](arg1);
 }

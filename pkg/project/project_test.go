@@ -107,3 +107,51 @@ func TestProjectScaffoldingAndManifestIO(t *testing.T) {
 		t.Errorf("expected loaded author 'Test Author', got %s", loaded.Author)
 	}
 }
+
+func TestVerifyAndRepairProject(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "ikemen-verify-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	engineDir := filepath.Join(tmpDir, "engine")
+	projectDir := filepath.Join(tmpDir, "project")
+
+	// Setup engine with mock external/script/main.lua
+	scriptDir := filepath.Join(engineDir, "external", "script")
+	if err := os.MkdirAll(scriptDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(scriptDir, "main.lua"), []byte("print('hello')"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Setup project without main.lua
+	if err := os.MkdirAll(filepath.Join(projectDir, "chars"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	report, err := VerifyAndRepairProject(engineDir, projectDir)
+	if err != nil {
+		t.Fatalf("VerifyAndRepairProject failed: %v", err)
+	}
+
+	if report.MissingCount != 1 {
+		t.Errorf("expected 1 missing file, got %d", report.MissingCount)
+	}
+	if report.RepairedCount != 1 {
+		t.Errorf("expected 1 repaired file, got %d", report.RepairedCount)
+	}
+
+	// Verify main.lua exists in project after repair
+	repairedFile := filepath.Join(projectDir, "external", "script", "main.lua")
+	if _, err := os.Stat(repairedFile); os.IsNotExist(err) {
+		t.Errorf("expected %s to be restored", repairedFile)
+	}
+
+	// Verify log file was written
+	if _, err := os.Stat(report.LogFilePath); os.IsNotExist(err) {
+		t.Errorf("expected log file %s to exist", report.LogFilePath)
+	}
+}

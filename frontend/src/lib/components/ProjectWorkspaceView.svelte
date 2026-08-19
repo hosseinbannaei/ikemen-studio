@@ -16,7 +16,8 @@
     XCircle,
     Loader2,
     Activity,
-    Shield,
+    Wrench,
+    FileText,
   } from 'lucide-svelte';
 
   export let onBackToProjects: () => void;
@@ -88,14 +89,41 @@
         </div>
 
         <!-- Action Controls -->
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2.5 flex-wrap">
           <button
             type="button"
-            class="px-3.5 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600/70 text-slate-200 text-xs font-medium flex items-center gap-2 transition shadow-sm"
+            class="px-3 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600/70 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
             on:click={() => projectStore.openFolder()}
+            title="Open project directory in File Explorer"
           >
-            <Folder class="w-4 h-4 text-indigo-400" />
-            <span>Open Explorer</span>
+            <Folder class="w-3.5 h-3.5 text-indigo-400" />
+            <span>Explorer</span>
+          </button>
+
+          <button
+            type="button"
+            class="px-3 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600/70 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+            on:click={() => projectStore.openLogs()}
+            title="Open project logs folder"
+          >
+            <FileText class="w-3.5 h-3.5 text-cyan-400" />
+            <span>Logs</span>
+          </button>
+
+          <button
+            type="button"
+            disabled={$projectStore.isVerifying || isBusy}
+            class="px-3.5 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 disabled:opacity-50 border border-dark-600/70 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+            on:click={() => projectStore.verifyAndRepair()}
+            title="Verify and repair core engine files (external scripts, shaders, DLLs)"
+          >
+            {#if $projectStore.isVerifying}
+              <Loader2 class="w-3.5 h-3.5 animate-spin text-indigo-400" />
+              <span>Verifying...</span>
+            {:else}
+              <Wrench class="w-3.5 h-3.5 text-purple-400" />
+              <span>Verify & Repair</span>
+            {/if}
           </button>
 
           {#if $projectStore.gameState === 'starting'}
