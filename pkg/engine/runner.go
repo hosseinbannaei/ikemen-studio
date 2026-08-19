@@ -8,13 +8,15 @@ import (
 )
 
 type ProcessManager struct {
-	mu        sync.Mutex
-	processes map[string]*exec.Cmd
+	mu             sync.Mutex
+	processes      map[string]*exec.Cmd
+	userTerminated map[string]bool
 }
 
 var (
 	globalRunner = &ProcessManager{
-		processes: make(map[string]*exec.Cmd),
+		processes:      make(map[string]*exec.Cmd),
+		userTerminated: make(map[string]bool),
 	}
 )
 
@@ -23,7 +25,7 @@ func GetProcessManager() *ProcessManager {
 }
 
 // Launch starts the engine executable with projectDir as current working directory
-func (pm *ProcessManager) Launch(executablePath, projectDir string, onExit func(error)) error {
+func (pm *ProcessManager) Launch(executablePath, projectDir string, onExit func(err error, userTerminated bool)) error {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 
@@ -50,16 +52,19 @@ func (pm *ProcessManager) Launch(executablePath, projectDir string, onExit func(
 	}
 
 	pm.processes[projectDir] = cmd
+	pm.userTerminated[projectDir] = false
 
 	go func() {
 		err := cmd.Wait()
 
 		pm.mu.Lock()
+		wasKilled := pm.userTerminated[projectDir]
 		delete(pm.processes, projectDir)
+		delete(pm.userTerminated, projectDir)
 		pm.mu.Unlock()
 
 		if onExit != nil {
-			onExit(err)
+			onExit(err, wasKilled)
 		}
 	}()
 
@@ -79,6 +84,9 @@ func (pm *ProcessManager) IsRunning(projectDir string) bool {
 func (pm *ProcessManager) Stop(projectDir string) error {
 	pm.mu.Lock()
 	cmd, exists := pm.processes[projectDir]
+	if exists {
+		pm.userTerminated[projectDir] = true
+	}
 	pm.mu.Unlock()
 
 	if !exists || cmd.Process == nil {

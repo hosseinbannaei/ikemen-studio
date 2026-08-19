@@ -116,7 +116,7 @@ func EnsureProjectRuntimeAssets(engineDir, projectDir string) error {
 		return nil
 	}
 
-	foldersToCopy := []string{"external", "lib", "data", "font", "sound", "stages", "video"}
+	foldersToCopy := []string{"external", "lib", "data", "font", "sound", "stages", "video", "chars"}
 	for _, folder := range foldersToCopy {
 		srcFolder := filepath.Join(engineDir, folder)
 		if fi, err := os.Stat(srcFolder); err == nil && fi.IsDir() {

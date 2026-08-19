@@ -277,10 +277,11 @@ func (a *App) LaunchProject(projectDir string) error {
 	_ = project.EnsureProjectRuntimeAssets(engineDir, projectDir)
 
 	runner := engine.GetProcessManager()
-	err = runner.Launch(execPath, projectDir, func(exitErr error) {
+	err = runner.Launch(execPath, projectDir, func(exitErr error, userTerminated bool) {
 		runtime.EventsEmit(a.ctx, "game-stopped", map[string]interface{}{
-			"projectDir": projectDir,
-			"error":      exitErr != nil,
+			"projectDir":     projectDir,
+			"error":          exitErr != nil && !userTerminated,
+			"userTerminated": userTerminated,
 		})
 	})
 

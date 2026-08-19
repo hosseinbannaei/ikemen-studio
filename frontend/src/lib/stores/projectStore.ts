@@ -70,10 +70,10 @@ function createProjectStore() {
             canStop: false,
           }));
 
-          if (data?.error) {
-            toastStore.warning('Game Exited', 'Ikemen GO terminated with an abnormal code');
+          if (data?.userTerminated) {
+            toastStore.info('Game Stopped', 'Game process terminated');
           } else {
-            toastStore.info('Game Closed', 'Ikemen GO process finished');
+            toastStore.info('Game Closed', 'Ikemen GO session ended');
           }
         });
 
