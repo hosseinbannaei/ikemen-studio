@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"path/filepath"
 	goruntime "runtime"
 	"strings"
+	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -17,12 +19,16 @@ import (
 
 // App struct
 type App struct {
-	ctx context.Context
+	ctx             context.Context
+	downloadsMu     sync.Mutex
+	activeDownloads map[string]context.CancelFunc
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{}
+	return &App{
+		activeDownloads: make(map[string]context.CancelFunc),
+	}
 }
 
 // startup is called when the app starts. The context is saved
@@ -98,21 +104,60 @@ func (a *App) DownloadEngine(tag string) error {
 		return fmt.Errorf("could not find compatible binary for tag %s: %w", tag, err)
 	}
 
+	downloadCtx, cancel := context.WithCancel(context.Background())
+
+	a.downloadsMu.Lock()
+	if existingCancel, exists := a.activeDownloads[tag]; exists {
+		existingCancel()
+	}
+	a.activeDownloads[tag] = cancel
+	a.downloadsMu.Unlock()
+
 	// Run download in background goroutine with progress events emitted to frontend
 	go func() {
-		err := engine.DownloadAndExtractEngine(*asset, tag, cfg.EnginesDir, func(progress engine.DownloadProgress) {
+		defer func() {
+			a.downloadsMu.Lock()
+			delete(a.activeDownloads, tag)
+			a.downloadsMu.Unlock()
+		}()
+
+		err := engine.DownloadAndExtractEngine(downloadCtx, *asset, tag, cfg.EnginesDir, func(progress engine.DownloadProgress) {
 			runtime.EventsEmit(a.ctx, "engine-download-progress", progress)
 		})
 
 		if err != nil {
-			runtime.EventsEmit(a.ctx, "engine-download-progress", engine.DownloadProgress{
-				Version: tag,
-				Status:  "error",
-				Error:   err.Error(),
-			})
+			if errors.Is(err, context.Canceled) {
+				runtime.EventsEmit(a.ctx, "engine-download-progress", engine.DownloadProgress{
+					Version: tag,
+					Status:  "cancelled",
+				})
+			} else {
+				runtime.EventsEmit(a.ctx, "engine-download-progress", engine.DownloadProgress{
+					Version: tag,
+					Status:  "error",
+					Error:   err.Error(),
+				})
+			}
 		}
 	}()
 
+	return nil
+}
+
+// CancelDownload cancels an active engine download
+func (a *App) CancelDownload(tag string) error {
+	a.downloadsMu.Lock()
+	cancel, exists := a.activeDownloads[tag]
+	if exists {
+		cancel()
+		delete(a.activeDownloads, tag)
+	}
+	a.downloadsMu.Unlock()
+
+	runtime.EventsEmit(a.ctx, "engine-download-progress", engine.DownloadProgress{
+		Version: tag,
+		Status:  "cancelled",
+	})
 	return nil
 }
 
@@ -228,7 +273,7 @@ func (a *App) LaunchProject(projectDir string) error {
 		return fmt.Errorf("could not find Ikemen GO executable for engine version %s (path: %s)", manifest.Engine.Version, engineDir)
 	}
 
-	// Ensure runtime assets (external/script, lib DLLs, shaders, system data) are present in the project directory
+	// Ensure runtime assets (external scripts, lib DLLs, etc.) exist in the project directory
 	_ = project.EnsureProjectRuntimeAssets(engineDir, projectDir)
 
 	runner := engine.GetProcessManager()

@@ -22,13 +22,17 @@ func ListInstalledEngines(enginesDir string) ([]InstalledEngine, error) {
 
 	var engines []InstalledEngine
 	for _, entry := range entries {
-		if !entry.IsDir() {
+		if !entry.IsDir() || strings.Contains(entry.Name(), ".tmp") {
 			continue
 		}
 
 		version := entry.Name()
 		enginePath := filepath.Join(enginesDir, version)
 		execPath := FindEngineExecutable(enginePath)
+		if execPath == "" {
+			// Not a fully installed engine or missing binary
+			continue
+		}
 
 		info, err := entry.Info()
 		var installedAt time.Time

@@ -14,6 +14,8 @@
     Calendar,
     User,
     XCircle,
+    Loader2,
+    Activity,
   } from 'lucide-svelte';
 
   const folderShortcuts = [
@@ -36,19 +38,32 @@
       return d;
     }
   }
+
+  $: isBusy = $projectStore.gameState !== 'idle';
 </script>
 
 {#if $projectStore.current}
   <div class="max-w-6xl mx-auto p-6 space-y-6">
     <!-- Top Hero Banner / Project Details -->
-    <div class="p-6 rounded-2xl bg-dark-800 border border-dark-600/70 shadow-lg relative overflow-hidden">
+    <div class="p-6 rounded-2xl bg-dark-800 border {$projectStore.gameState === 'running' ? 'border-emerald-500/50 shadow-emerald-950/30' : 'border-dark-600/70'} shadow-lg relative overflow-hidden transition-all duration-300">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
         <div class="space-y-2">
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3 flex-wrap">
             <h1 class="text-2xl font-bold text-slate-100">{$projectStore.current.name}</h1>
             <span class="text-xs font-mono px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
               {$projectStore.current.engine.version} ({$projectStore.current.engine.channel})
             </span>
+            {#if $projectStore.gameState === 'running'}
+              <span class="flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                Game Session Active
+              </span>
+            {:else if $projectStore.gameState === 'starting'}
+              <span class="flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold">
+                <Loader2 class="w-3 h-3 animate-spin" />
+                Spawning Engine Process...
+              </span>
+            {/if}
           </div>
 
           <div class="flex items-center gap-4 text-xs text-slate-400 flex-wrap">
@@ -73,33 +88,83 @@
         <div class="flex items-center gap-3">
           <button
             type="button"
-            class="px-3.5 py-2 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600/70 text-slate-200 text-xs font-medium flex items-center gap-2 transition"
+            class="px-3.5 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600/70 text-slate-200 text-xs font-medium flex items-center gap-2 transition"
             on:click={() => projectStore.openFolder()}
           >
             <Folder class="w-4 h-4 text-indigo-400" />
-            <span>Open in Explorer</span>
+            <span>Explorer</span>
           </button>
 
-          <button
-            type="button"
-            class="px-6 py-2.5 rounded-xl font-bold text-sm shadow-md flex items-center gap-2.5 transition {
-              $projectStore.isRunning
-                ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950/50'
-                : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/50'
-            }"
-            on:click={() => ($projectStore.isRunning ? projectStore.stop() : projectStore.launch())}
-          >
-            {#if $projectStore.isRunning}
+          {#if $projectStore.gameState === 'starting'}
+            <button
+              type="button"
+              disabled
+              class="px-6 py-2.5 rounded-xl font-bold text-sm bg-dark-700 border border-dark-600 text-slate-400 cursor-not-allowed flex items-center gap-2.5 transition"
+            >
+              <Loader2 class="w-4 h-4 animate-spin text-amber-400" />
+              <span>Starting...</span>
+            </button>
+          {:else if $projectStore.gameState === 'stopping'}
+            <button
+              type="button"
+              disabled
+              class="px-6 py-2.5 rounded-xl font-bold text-sm bg-dark-700 border border-dark-600 text-slate-400 cursor-not-allowed flex items-center gap-2.5 transition"
+            >
+              <Loader2 class="w-4 h-4 animate-spin text-rose-400" />
+              <span>Stopping...</span>
+            </button>
+          {:else if $projectStore.gameState === 'running'}
+            <button
+              type="button"
+              disabled={!$projectStore.canStop}
+              class="px-6 py-2.5 rounded-xl font-bold text-sm shadow-md flex items-center gap-2.5 transition {
+                $projectStore.canStop
+                  ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950/50'
+                  : 'bg-rose-900/60 text-rose-300 border border-rose-800/50 cursor-wait'
+              }"
+              on:click={() => projectStore.stop()}
+            >
               <Square class="w-4 h-4 fill-current" />
-              <span>Stop Game</span>
-            {:else}
+              <span>{$projectStore.canStop ? 'Stop Game' : 'Game Active...'}</span>
+            </button>
+          {:else}
+            <button
+              type="button"
+              class="px-6 py-2.5 rounded-xl font-bold text-sm shadow-md bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/50 flex items-center gap-2.5 transition"
+              on:click={() => projectStore.launch()}
+            >
               <Play class="w-4 h-4 fill-current" />
               <span>Launch Game</span>
-            {/if}
-          </button>
+            </button>
+          {/if}
         </div>
       </div>
     </div>
+
+    <!-- Active Session Notification Bar -->
+    {#if $projectStore.gameState === 'running'}
+      <div class="p-4 rounded-xl bg-emerald-950/40 border border-emerald-600/40 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <Activity class="w-4 h-4 animate-pulse" />
+          </div>
+          <div>
+            <div class="text-xs font-bold text-emerald-200">Ikemen GO is currently running</div>
+            <div class="text-[11px] text-emerald-400/80">Play and test your game in the native engine window. Use Stop Game when finished.</div>
+          </div>
+        </div>
+        {#if $projectStore.canStop}
+          <button
+            type="button"
+            class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5"
+            on:click={() => projectStore.stop()}
+          >
+            <Square class="w-3.5 h-3.5 fill-current" />
+            Force Close
+          </button>
+        {/if}
+      </div>
+    {/if}
 
     <!-- Quick Folder Access Grid -->
     <div>
@@ -112,7 +177,17 @@
             on:click={() => projectStore.openFolder(sc.subpath)}
           >
             <div class="w-10 h-10 rounded-xl bg-gradient-to-br {sc.color} border flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition">
-              <svelte:component this={sc.icon} class="w-5 h-5" />
+              {#if sc.subpath === 'chars'}
+                <Users class="w-5 h-5" />
+              {:else if sc.subpath === 'stages'}
+                <Mountain class="w-5 h-5" />
+              {:else if sc.subpath === 'data'}
+                <FileCode class="w-5 h-5" />
+              {:else if sc.subpath === 'font'}
+                <Type class="w-5 h-5" />
+              {:else}
+                <Music class="w-5 h-5" />
+              {/if}
             </div>
             <div class="space-y-0.5 min-w-0 flex-1">
               <div class="flex items-center justify-between">
@@ -148,7 +223,8 @@
     <div class="pt-4 flex justify-end">
       <button
         type="button"
-        class="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-500 hover:text-slate-300 hover:bg-dark-800 rounded-lg transition"
+        disabled={isBusy}
+        class="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-500 hover:text-slate-300 hover:bg-dark-800 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition"
         on:click={() => projectStore.close()}
       >
         <XCircle class="w-4 h-4" />

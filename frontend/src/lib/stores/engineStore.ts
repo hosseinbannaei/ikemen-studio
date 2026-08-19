@@ -1,6 +1,12 @@
 import { writable } from 'svelte/store';
 import type { ReleaseInfo, InstalledEngine, DownloadProgress } from '../types';
-import { FetchAvailableEngines, GetInstalledEngines, DownloadEngine, DeleteEngine } from '../../../wailsjs/go/main/App';
+import {
+  FetchAvailableEngines,
+  GetInstalledEngines,
+  DownloadEngine,
+  CancelDownload,
+  DeleteEngine,
+} from '../../../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
 import { toastStore } from './toastStore';
 
@@ -33,6 +39,13 @@ function createEngineStore() {
 
         EventsOn('engine-download-progress', (progress: DownloadProgress) => {
           update((state) => {
+            if (progress.status === 'cancelled') {
+              const downloads = { ...state.downloads };
+              delete downloads[progress.version];
+              toastStore.info('Download Cancelled', `Download for ${progress.version} was cancelled`);
+              return { ...state, downloads };
+            }
+
             const downloads = { ...state.downloads, [progress.version]: progress };
 
             if (progress.status === 'completed') {
@@ -108,6 +121,21 @@ function createEngineStore() {
     }
   }
 
+  async function cancelDownload(version: string) {
+    try {
+      await CancelDownload(version);
+      update((s) => {
+        const downloads = { ...s.downloads };
+        delete downloads[version];
+        return { ...s, downloads };
+      });
+      // Refresh installed engines to remove any partial files
+      await loadInstalled();
+    } catch (err: any) {
+      toastStore.error('Cancel Failed', err?.message || 'Could not cancel download');
+    }
+  }
+
   async function removeEngine(version: string) {
     try {
       await DeleteEngine(version);
@@ -124,6 +152,7 @@ function createEngineStore() {
     loadAvailable,
     loadInstalled,
     startDownload,
+    cancelDownload,
     removeEngine,
   };
 }

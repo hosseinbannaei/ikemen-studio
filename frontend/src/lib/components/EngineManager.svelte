@@ -12,7 +12,8 @@
     ChevronDown,
     ChevronUp,
     HardDrive,
-    Sparkles,
+    XCircle,
+    Loader2,
   } from 'lucide-svelte';
 
   export let onClose: () => void;
@@ -27,6 +28,10 @@
   });
 
   function isInstalled(tag: string): boolean {
+    const download = $engineStore.downloads[tag];
+    if (download && (download.status === 'downloading' || download.status === 'extracting')) {
+      return false;
+    }
     return $engineStore.installed.some(
       (e) => e.version.toLowerCase() === tag.toLowerCase()
     );
@@ -83,7 +88,7 @@
             engineStore.loadAvailable();
           }}
         >
-          <RefreshCw class="w-4 h-4 {$engineStore.loadingAvailable || $engineStore.loadingInstalled ? 'animate-spin' : ''}" />
+          <RefreshCw class="w-4 h-4 {$engineStore.loadingAvailable || $engineStore.loadingInstalled ? 'animate-spin text-indigo-400' : ''}" />
         </button>
         <button
           type="button"
@@ -189,7 +194,7 @@
                   </span>
                   {#if engine.executablePath}
                     <span class="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
-                      <CheckCircle2 class="w-3 h-3" /> Executable Found
+                      <CheckCircle2 class="w-3 h-3" /> Ready
                     </span>
                   {/if}
                 </div>
@@ -229,6 +234,7 @@
         {:else}
           {#each filteredAvailable as release (release.tag)}
             {@const download = $engineStore.downloads[release.tag]}
+            {@const isDownloading = download && (download.status === 'downloading' || download.status === 'extracting')}
             {@const installed = isInstalled(release.tag)}
             <div class="p-4 rounded-xl bg-dark-900/60 border border-dark-600/50 space-y-3">
               <div class="flex items-start justify-between gap-4">
@@ -271,14 +277,25 @@
 
                 <!-- Download / Status Action -->
                 <div>
-                  {#if installed}
+                  {#if isDownloading}
+                    <div class="flex items-center gap-2">
+                      <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-950/60 text-indigo-300 text-xs font-medium border border-indigo-700/40">
+                        <Loader2 class="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                        <span class="capitalize">{download.status}... {Math.round(download.percent)}%</span>
+                      </div>
+                      <button
+                        type="button"
+                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900 border border-rose-800/40 text-rose-300 text-xs font-medium transition"
+                        title="Cancel Download"
+                        on:click={() => engineStore.cancelDownload(release.tag)}
+                      >
+                        <XCircle class="w-3.5 h-3.5" />
+                        <span>Cancel</span>
+                      </button>
+                    </div>
+                  {:else if installed}
                     <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dark-700/60 text-emerald-400 text-xs font-semibold border border-dark-600/40">
                       <CheckCircle2 class="w-4 h-4" /> Ready
-                    </div>
-                  {:else if download && (download.status === 'downloading' || download.status === 'extracting')}
-                    <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-950/60 text-indigo-300 text-xs font-medium border border-indigo-700/40">
-                      <RefreshCw class="w-3.5 h-3.5 animate-spin" />
-                      <span class="capitalize">{download.status}... {Math.round(download.percent)}%</span>
                     </div>
                   {:else}
                     <button
@@ -294,7 +311,7 @@
               </div>
 
               <!-- Progress Bar -->
-              {#if download && (download.status === 'downloading' || download.status === 'extracting')}
+              {#if isDownloading}
                 <div class="space-y-1">
                   <div class="w-full bg-dark-700 rounded-full h-1.5 overflow-hidden">
                     <div
@@ -303,7 +320,7 @@
                     ></div>
                   </div>
                   <div class="flex justify-between text-[11px] text-slate-400 font-mono">
-                    <span>{download.status === 'downloading' ? 'Downloading archive...' : 'Extracting engine files...'}</span>
+                    <span>{download.status === 'downloading' ? 'Downloading engine package...' : 'Extracting & verifying binary...'}</span>
                     <span>{Math.round(download.percent)}%</span>
                   </div>
                 </div>

@@ -4,7 +4,9 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -138,6 +140,7 @@ func FindBestAsset(release ReleaseInfo) (*ReleaseAsset, error) {
 }
 
 type progressWriter struct {
+	ctx        context.Context
 	total      int64
 	current    int64
 	version    string
@@ -145,6 +148,12 @@ type progressWriter struct {
 }
 
 func (pw *progressWriter) Write(p []byte) (int, error) {
+	select {
+	case <-pw.ctx.Done():
+		return 0, pw.ctx.Err()
+	default:
+	}
+
 	n := len(p)
 	pw.current += int64(n)
 	if pw.onProgress != nil {
@@ -163,12 +172,21 @@ func (pw *progressWriter) Write(p []byte) (int, error) {
 	return n, nil
 }
 
-// DownloadAndExtractEngine downloads the asset and unpacks it into enginesDir/version
-func DownloadAndExtractEngine(asset ReleaseAsset, version string, enginesDir string, onProgress func(DownloadProgress)) error {
-	destDir := filepath.Join(enginesDir, version)
-	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return fmt.Errorf("failed to create engine directory: %w", err)
+// DownloadAndExtractEngine downloads the asset into a temp folder and renames it to enginesDir/version upon completion
+func DownloadAndExtractEngine(ctx context.Context, asset ReleaseAsset, version string, enginesDir string, onProgress func(DownloadProgress)) error {
+	if err := os.MkdirAll(enginesDir, 0755); err != nil {
+		return fmt.Errorf("failed to create engines directory: %w", err)
 	}
+
+	destDir := filepath.Join(enginesDir, version)
+	tmpExtractDir := filepath.Join(enginesDir, fmt.Sprintf("%s.tmp-%d", version, time.Now().UnixNano()))
+
+	// Clean up temp extraction dir if process is cancelled or fails
+	defer func() {
+		if _, err := os.Stat(tmpExtractDir); err == nil {
+			_ = os.RemoveAll(tmpExtractDir)
+		}
+	}()
 
 	tmpFile, err := os.CreateTemp("", "ikemen-download-*"+filepath.Ext(asset.Name))
 	if err != nil {
@@ -177,8 +195,17 @@ func DownloadAndExtractEngine(asset ReleaseAsset, version string, enginesDir str
 	defer os.Remove(tmpFile.Name())
 	defer tmpFile.Close()
 
-	resp, err := http.Get(asset.DownloadURL)
+	req, err := http.NewRequestWithContext(ctx, "GET", asset.DownloadURL, nil)
 	if err != nil {
+		return fmt.Errorf("failed to build download request: %w", err)
+	}
+	req.Header.Set("User-Agent", "Ikemen-Studio")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return context.Canceled
+		}
 		return fmt.Errorf("failed to download engine asset: %w", err)
 	}
 	defer resp.Body.Close()
@@ -188,16 +215,26 @@ func DownloadAndExtractEngine(asset ReleaseAsset, version string, enginesDir str
 	}
 
 	pw := &progressWriter{
+		ctx:        ctx,
 		total:      resp.ContentLength,
 		version:    version,
 		onProgress: onProgress,
 	}
 
 	if _, err := io.Copy(tmpFile, io.TeeReader(resp.Body, pw)); err != nil {
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return context.Canceled
+		}
 		return fmt.Errorf("failed writing downloaded asset: %w", err)
 	}
 
 	_ = tmpFile.Close()
+
+	select {
+	case <-ctx.Done():
+		return context.Canceled
+	default:
+	}
 
 	if onProgress != nil {
 		onProgress(DownloadProgress{
@@ -207,14 +244,19 @@ func DownloadAndExtractEngine(asset ReleaseAsset, version string, enginesDir str
 		})
 	}
 
-	// Extract archive
+	// Create temp extract directory
+	if err := os.MkdirAll(tmpExtractDir, 0755); err != nil {
+		return fmt.Errorf("failed to create temporary extraction directory: %w", err)
+	}
+
+	// Extract archive into tmpExtractDir
 	lowerName := strings.ToLower(asset.Name)
 	if strings.HasSuffix(lowerName, ".zip") {
-		if err := extractZip(tmpFile.Name(), destDir); err != nil {
+		if err := extractZip(tmpFile.Name(), tmpExtractDir); err != nil {
 			return fmt.Errorf("failed extracting zip: %w", err)
 		}
 	} else if strings.HasSuffix(lowerName, ".tar.gz") || strings.HasSuffix(lowerName, ".tgz") {
-		if err := extractTarGz(tmpFile.Name(), destDir); err != nil {
+		if err := extractTarGz(tmpFile.Name(), tmpExtractDir); err != nil {
 			return fmt.Errorf("failed extracting tar.gz: %w", err)
 		}
 	} else {
@@ -222,12 +264,26 @@ func DownloadAndExtractEngine(asset ReleaseAsset, version string, enginesDir str
 	}
 
 	// Flatten single top-level directory if archive contained one
-	if err := flattenSingleDirectory(destDir); err != nil {
+	if err := flattenSingleDirectory(tmpExtractDir); err != nil {
 		return fmt.Errorf("failed organizing extracted files: %w", err)
 	}
 
 	// Make executables executable
-	_ = fixPermissions(destDir)
+	_ = fixPermissions(tmpExtractDir)
+
+	select {
+	case <-ctx.Done():
+		return context.Canceled
+	default:
+	}
+
+	// If destDir already exists (e.g. overwriting/updating), remove it
+	_ = os.RemoveAll(destDir)
+
+	// Move tmpExtractDir to final destDir
+	if err := os.Rename(tmpExtractDir, destDir); err != nil {
+		return fmt.Errorf("failed moving extracted engine to destination: %w", err)
+	}
 
 	if onProgress != nil {
 		onProgress(DownloadProgress{

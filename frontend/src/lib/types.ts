@@ -52,9 +52,11 @@ export interface DownloadProgress {
   percent: number;
   downloadedBytes: number;
   totalBytes: number;
-  status: 'downloading' | 'extracting' | 'completed' | 'error';
+  status: 'downloading' | 'extracting' | 'completed' | 'cancelled' | 'error';
   error?: string;
 }
+
+export type GameState = 'idle' | 'starting' | 'running' | 'stopping';
 
 export interface ToastMessage {
   id: string;

@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import type { ProjectManifest } from '../types';
+import type { ProjectManifest, GameState } from '../types';
 import {
   CreateProject,
   OpenProject,
@@ -17,16 +17,21 @@ interface ProjectState {
   current: ProjectManifest | null;
   recent: string[];
   isRunning: boolean;
+  gameState: GameState;
+  canStop: boolean; // Cooldown flag before allowing stop
   loading: boolean;
 }
 
 let eventsInitialized = false;
+let stopCooldownTimer: any = null;
 
 function createProjectStore() {
   const { subscribe, update, set } = writable<ProjectState>({
     current: null,
     recent: [],
     isRunning: false,
+    gameState: 'idle',
+    canStop: false,
     loading: false,
   });
 
@@ -40,18 +45,38 @@ function createProjectStore() {
         } catch {}
 
         EventsOn('game-started', (projectDir: string) => {
-          update((s) => ({ ...s, isRunning: true }));
+          update((s) => ({
+            ...s,
+            isRunning: true,
+            gameState: 'running',
+            canStop: false,
+          }));
+
+          // Grace period / cooldown before allowing force stop (1.5 seconds)
+          if (stopCooldownTimer) clearTimeout(stopCooldownTimer);
+          stopCooldownTimer = setTimeout(() => {
+            update((s) => ({ ...s, canStop: true }));
+          }, 1500);
+
           toastStore.info('Game Started', 'Ikemen GO is running');
         });
 
         EventsOn('game-stopped', (data: any) => {
-          update((s) => ({ ...s, isRunning: false }));
+          if (stopCooldownTimer) clearTimeout(stopCooldownTimer);
+          update((s) => ({
+            ...s,
+            isRunning: false,
+            gameState: 'idle',
+            canStop: false,
+          }));
+
           if (data?.error) {
-            toastStore.warning('Game Exited', 'Ikemen GO terminated with an error or abnormal code');
+            toastStore.warning('Game Exited', 'Ikemen GO terminated with an abnormal code');
           } else {
             toastStore.info('Game Closed', 'Ikemen GO process finished');
           }
         });
+
         eventsInitialized = true;
       }
     } catch (e) {
@@ -92,7 +117,14 @@ function createProjectStore() {
     try {
       const manifest = await OpenProject(projectDir);
       const running = await IsProjectRunning(projectDir);
-      update((s) => ({ ...s, current: manifest as any, isRunning: running, loading: false }));
+      update((s) => ({
+        ...s,
+        current: manifest as any,
+        isRunning: running,
+        gameState: running ? 'running' : 'idle',
+        canStop: running,
+        loading: false,
+      }));
       toastStore.success('Project Opened', manifest.name);
       await loadRecent();
       return true;
@@ -118,7 +150,7 @@ function createProjectStore() {
   }
 
   function close() {
-    update((s) => ({ ...s, current: null, isRunning: false }));
+    update((s) => ({ ...s, current: null, isRunning: false, gameState: 'idle', canStop: false }));
   }
 
   async function launch(): Promise<void> {
@@ -126,19 +158,35 @@ function createProjectStore() {
     let currentPath = '';
     update((s) => {
       currentPath = s.current?.path || '';
-      return s;
+      return {
+        ...s,
+        gameState: 'starting',
+        isRunning: true,
+        canStop: false,
+      };
     });
 
     if (!currentPath) {
       toastStore.error('Launch Error', 'No active project to launch');
+      update((s) => ({ ...s, gameState: 'idle', isRunning: false }));
       return;
     }
 
     try {
       await LaunchProject(currentPath);
+      // Wait for process initialization
+      setTimeout(() => {
+        update((s) => {
+          if (s.gameState === 'starting') {
+            return { ...s, gameState: 'running', canStop: true };
+          }
+          return s;
+        });
+      }, 1500);
     } catch (err: any) {
       console.error('Failed to launch project:', err);
       toastStore.error('Launch Error', err?.message || 'Failed to start Ikemen GO');
+      update((s) => ({ ...s, gameState: 'idle', isRunning: false, canStop: false }));
     }
   }
 
@@ -146,7 +194,10 @@ function createProjectStore() {
     let currentPath = '';
     update((s) => {
       currentPath = s.current?.path || '';
-      return s;
+      return {
+        ...s,
+        gameState: 'stopping',
+      };
     });
 
     if (!currentPath) return;
@@ -156,6 +207,7 @@ function createProjectStore() {
       toastStore.info('Game Stopping', 'Terminating game process...');
     } catch (err: any) {
       toastStore.error('Stop Failed', err?.message || 'Could not stop running game');
+      update((s) => ({ ...s, gameState: 'running' }));
     }
   }
 

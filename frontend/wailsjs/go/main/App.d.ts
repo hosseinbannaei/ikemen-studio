@@ -4,6 +4,8 @@ import {project} from '../models';
 import {engine} from '../models';
 import {config} from '../models';
 
+export function CancelDownload(arg1:string):Promise<void>;
+
 export function CreateProject(arg1:string,arg2:string,arg3:string,arg4:string):Promise<project.ProjectManifest>;
 
 export function DeleteEngine(arg1:string):Promise<void>;
