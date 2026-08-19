@@ -1,0 +1,27 @@
+# Binaries & build artifacts
+build/bin/
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Frontend artifacts
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+.vite/
+
+# Go artifacts
+*.test
+*.out
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
