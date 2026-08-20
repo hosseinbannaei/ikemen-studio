@@ -162,7 +162,7 @@ function createProjectStore() {
     }
   }
 
-  async function open(projectDir: string): Promise<boolean> {
+  async function open(projectDir: string, silent = false): Promise<boolean> {
     initEvents();
     update((s) => ({ ...s, loading: true }));
     try {
@@ -176,13 +176,17 @@ function createProjectStore() {
         canStop: running,
         loading: false,
       }));
-      toastStore.success('Project Opened', manifest.name);
+      if (!silent) {
+        toastStore.success('Project Opened', manifest.name);
+      }
       await loadRecent();
       await loadBackups(projectDir);
       return true;
     } catch (err: any) {
-      console.error('Failed to open project:', err);
-      toastStore.error('Open Failed', err?.message || 'Could not open Ikemen project');
+      if (!silent) {
+        console.error('Failed to open project:', err);
+        toastStore.error('Open Failed', err?.message || 'Could not open Ikemen project');
+      }
       update((s) => ({ ...s, loading: false }));
       return false;
     }
@@ -236,18 +240,21 @@ function createProjectStore() {
       const dir = await SelectProjectDirectoryDialog();
       if (!dir) return { opened: false };
 
-      try {
-        const ok = await open(dir);
-        if (ok) return { opened: true };
-      } catch {}
+      // Attempt silent open for studio project
+      const ok = await open(dir, true);
+      if (ok) {
+        toastStore.success('Project Opened');
+        return { opened: true };
+      }
 
       // If manifest open failed, check if it is a raw game folder to import
       const inspection = await checkRawGame(dir);
       if (inspection && inspection.isValid) {
+        toastStore.info('Existing Game Detected', 'Configure import destination');
         return { opened: false, inspection, selectedPath: dir };
       }
 
-      toastStore.warning('No Project Found', 'Folder does not contain a valid Ikemen project or assets');
+      toastStore.warning('No Project Found', 'Selected directory does not contain an Ikemen project or assets');
       return { opened: false };
     } catch (err: any) {
       toastStore.error('Dialog Error', err?.message || 'Failed to select directory');
@@ -357,8 +364,7 @@ function createProjectStore() {
 
     try {
       await SwitchProjectEngine(currentPath, newVersion);
-      // Reload project
-      await open(currentPath);
+      await open(currentPath, true);
       toastStore.success('Engine Switched', `Project updated to ${newVersion} with safety backup`);
       return true;
     } catch (err: any) {
@@ -378,7 +384,7 @@ function createProjectStore() {
 
     try {
       await RollbackProjectEngine(currentPath, backupId);
-      await open(currentPath);
+      await open(currentPath, true);
       toastStore.success('Engine Rolled Back', 'Successfully restored previous engine runtime');
       return true;
     } catch (err: any) {
