@@ -214,6 +214,30 @@ export namespace main {
 
 export namespace project {
 	
+	export class AnimActionSummary {
+	    action_no: number;
+	    description?: string;
+	    frame_count: number;
+	    total_ticks: number;
+	    has_loop: boolean;
+	    has_hitbox: boolean;
+	    has_hurtbox: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AnimActionSummary(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.action_no = source["action_no"];
+	        this.description = source["description"];
+	        this.frame_count = source["frame_count"];
+	        this.total_ticks = source["total_ticks"];
+	        this.has_loop = source["has_loop"];
+	        this.has_hitbox = source["has_hitbox"];
+	        this.has_hurtbox = source["has_hurtbox"];
+	    }
+	}
 	export class AssetSyncOptions {
 	    projectDir: string;
 	    engineDir: string;
@@ -262,6 +286,24 @@ export namespace project {
 	        this.itemCount = source["itemCount"];
 	        this.status = source["status"];
 	        this.files = source["files"];
+	    }
+	}
+	export class CommandEntrySummary {
+	    name: string;
+	    command: string;
+	    time: number;
+	    buffer_time: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CommandEntrySummary(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.command = source["command"];
+	        this.time = source["time"];
+	        this.buffer_time = source["buffer_time"];
 	    }
 	}
 	export class EngineBackupInfo {
@@ -343,6 +385,105 @@ export namespace project {
 	        this.detectedEngineVersion = source["detectedEngineVersion"];
 	    }
 	}
+	export class StateDefSummary {
+	    state_no: number;
+	    name?: string;
+	    type: string;
+	    move_type: string;
+	    physics: string;
+	    anim: number;
+	    controller_count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new StateDefSummary(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.state_no = source["state_no"];
+	        this.name = source["name"];
+	        this.type = source["type"];
+	        this.move_type = source["move_type"];
+	        this.physics = source["physics"];
+	        this.anim = source["anim"];
+	        this.controller_count = source["controller_count"];
+	    }
+	}
+	export class FileSectionSummary {
+	    name: string;
+	    line_start: number;
+	    line_end: number;
+	    item_count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FileSectionSummary(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.line_start = source["line_start"];
+	        this.line_end = source["line_end"];
+	        this.item_count = source["item_count"];
+	    }
+	}
+	export class FileInspectionResult {
+	    rel_path: string;
+	    file_type: string;
+	    category: string;
+	    display_name: string;
+	    total_lines: number;
+	    size_bytes: number;
+	    sections: FileSectionSummary[];
+	    key_values: Record<string, string>;
+	    anim_actions?: AnimActionSummary[];
+	    commands?: CommandEntrySummary[];
+	    state_defs?: StateDefSummary[];
+	    raw_content: string;
+	    is_editable: boolean;
+	    syntax_mode: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FileInspectionResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rel_path = source["rel_path"];
+	        this.file_type = source["file_type"];
+	        this.category = source["category"];
+	        this.display_name = source["display_name"];
+	        this.total_lines = source["total_lines"];
+	        this.size_bytes = source["size_bytes"];
+	        this.sections = this.convertValues(source["sections"], FileSectionSummary);
+	        this.key_values = source["key_values"];
+	        this.anim_actions = this.convertValues(source["anim_actions"], AnimActionSummary);
+	        this.commands = this.convertValues(source["commands"], CommandEntrySummary);
+	        this.state_defs = this.convertValues(source["state_defs"], StateDefSummary);
+	        this.raw_content = source["raw_content"];
+	        this.is_editable = source["is_editable"];
+	        this.syntax_mode = source["syntax_mode"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class ImportOptions {
 	    sourceDir: string;
 	    targetDir: string;
@@ -383,6 +524,30 @@ export namespace project {
 	        this.includeLegacySystem = source["includeLegacySystem"];
 	    }
 	}
+	export class ProjectAudioInfo {
+	    relative_path: string;
+	    file_name: string;
+	    format: string;
+	    size_bytes: number;
+	    assigned_events: string[];
+	    assigned_stages: string[];
+	    is_linked_from_vault: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProjectAudioInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.relative_path = source["relative_path"];
+	        this.file_name = source["file_name"];
+	        this.format = source["format"];
+	        this.size_bytes = source["size_bytes"];
+	        this.assigned_events = source["assigned_events"];
+	        this.assigned_stages = source["assigned_stages"];
+	        this.is_linked_from_vault = source["is_linked_from_vault"];
+	    }
+	}
 	export class ProjectDiffSummary {
 	    categories: CategoryDiff[];
 	    totalDiscrepancies: number;
@@ -416,6 +581,58 @@ export namespace project {
 		    }
 		    return a;
 		}
+	}
+	export class ProjectFontInfo {
+	    relative_path: string;
+	    file_name: string;
+	    font_type: string;
+	    size_bytes: number;
+	    system_slot_mappings: string[];
+	    is_linked_from_vault: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProjectFontInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.relative_path = source["relative_path"];
+	        this.file_name = source["file_name"];
+	        this.font_type = source["font_type"];
+	        this.size_bytes = source["size_bytes"];
+	        this.system_slot_mappings = source["system_slot_mappings"];
+	        this.is_linked_from_vault = source["is_linked_from_vault"];
+	    }
+	}
+	export class ProjectLifebarInfo {
+	    key: string;
+	    display_name: string;
+	    author: string;
+	    version: string;
+	    is_active: boolean;
+	    sprite_file: string;
+	    sound_file: string;
+	    font_count: number;
+	    preview_base64: string;
+	    is_linked_from_vault: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProjectLifebarInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.display_name = source["display_name"];
+	        this.author = source["author"];
+	        this.version = source["version"];
+	        this.is_active = source["is_active"];
+	        this.sprite_file = source["sprite_file"];
+	        this.sound_file = source["sound_file"];
+	        this.font_count = source["font_count"];
+	        this.preview_base64 = source["preview_base64"];
+	        this.is_linked_from_vault = source["is_linked_from_vault"];
+	    }
 	}
 	export class ProjectManifest {
 	    name: string;
@@ -460,6 +677,42 @@ export namespace project {
 		    }
 		    return a;
 		}
+	}
+	export class ProjectMotifInfo {
+	    key: string;
+	    display_name: string;
+	    author: string;
+	    version: string;
+	    resolution: string;
+	    grid_columns: number;
+	    grid_rows: number;
+	    total_slots: number;
+	    is_active: boolean;
+	    sprite_file: string;
+	    sound_file: string;
+	    preview_base64: string;
+	    is_linked_from_vault: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProjectMotifInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.display_name = source["display_name"];
+	        this.author = source["author"];
+	        this.version = source["version"];
+	        this.resolution = source["resolution"];
+	        this.grid_columns = source["grid_columns"];
+	        this.grid_rows = source["grid_rows"];
+	        this.total_slots = source["total_slots"];
+	        this.is_active = source["is_active"];
+	        this.sprite_file = source["sprite_file"];
+	        this.sound_file = source["sound_file"];
+	        this.preview_base64 = source["preview_base64"];
+	        this.is_linked_from_vault = source["is_linked_from_vault"];
+	    }
 	}
 	export class RosterAvailableCharacter {
 	    name: string;
@@ -569,6 +822,67 @@ export namespace project {
 		    return a;
 		}
 	}
+	export class ProjectStageInfo {
+	    relative_path: string;
+	    display_name: string;
+	    author: string;
+	    version: string;
+	    bgm_path: string;
+	    preview_base64: string;
+	    is_extra_stage: boolean;
+	    assigned_characters: string[];
+	    xscale: number;
+	    yscale: number;
+	    zoffset: number;
+	    is_linked_from_vault: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProjectStageInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.relative_path = source["relative_path"];
+	        this.display_name = source["display_name"];
+	        this.author = source["author"];
+	        this.version = source["version"];
+	        this.bgm_path = source["bgm_path"];
+	        this.preview_base64 = source["preview_base64"];
+	        this.is_extra_stage = source["is_extra_stage"];
+	        this.assigned_characters = source["assigned_characters"];
+	        this.xscale = source["xscale"];
+	        this.yscale = source["yscale"];
+	        this.zoffset = source["zoffset"];
+	        this.is_linked_from_vault = source["is_linked_from_vault"];
+	    }
+	}
+	export class ProjectStoryboardInfo {
+	    relative_path: string;
+	    display_name: string;
+	    scene_count: number;
+	    bgm_path: string;
+	    sprite_file: string;
+	    assigned_slots: string[];
+	    preview_base64: string;
+	    is_linked_from_vault: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProjectStoryboardInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.relative_path = source["relative_path"];
+	        this.display_name = source["display_name"];
+	        this.scene_count = source["scene_count"];
+	        this.bgm_path = source["bgm_path"];
+	        this.sprite_file = source["sprite_file"];
+	        this.assigned_slots = source["assigned_slots"];
+	        this.preview_base64 = source["preview_base64"];
+	        this.is_linked_from_vault = source["is_linked_from_vault"];
+	    }
+	}
+	
 	
 	
 	
@@ -727,6 +1041,30 @@ export namespace vault {
 		}
 	}
 	
+	export class VaultCleanReport {
+	    vault_id: string;
+	    removed_duplicates: number;
+	    cleaned_contaminations: number;
+	    regenerated_previews: number;
+	    pruned_missing: number;
+	    total_assets_now: number;
+	    details: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new VaultCleanReport(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.vault_id = source["vault_id"];
+	        this.removed_duplicates = source["removed_duplicates"];
+	        this.cleaned_contaminations = source["cleaned_contaminations"];
+	        this.regenerated_previews = source["regenerated_previews"];
+	        this.pruned_missing = source["pruned_missing"];
+	        this.total_assets_now = source["total_assets_now"];
+	        this.details = source["details"];
+	    }
+	}
 	export class VaultInfo {
 	    id: string;
 	    name: string;

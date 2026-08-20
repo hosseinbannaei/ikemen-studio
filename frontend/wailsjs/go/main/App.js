@@ -10,6 +10,10 @@ export function CancelDownload(arg1) {
   return window['go']['main']['App']['CancelDownload'](arg1);
 }
 
+export function CleanAndRepairVault(arg1) {
+  return window['go']['main']['App']['CleanAndRepairVault'](arg1);
+}
+
 export function CreateProject(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['CreateProject'](arg1, arg2, arg3, arg4);
 }
@@ -22,14 +26,17 @@ export function DeleteEngine(arg1) {
   return window['go']['main']['App']['DeleteEngine'](arg1);
 }
 
+export function DeleteProjectAudio(arg1, arg2) {
+  return window['go']['main']['App']['DeleteProjectAudio'](arg1, arg2);
+}
+
+export function DeleteProjectStage(arg1, arg2) {
+  return window['go']['main']['App']['DeleteProjectStage'](arg1, arg2);
+}
+
 export function DeleteVaultAsset(arg1, arg2) {
   return window['go']['main']['App']['DeleteVaultAsset'](arg1, arg2);
 }
-
-export function CleanAndRepairVault(arg1) {
-  return window['go']['main']['App']['CleanAndRepairVault'](arg1);
-}
-
 
 export function DetectExistingGame(arg1) {
   return window['go']['main']['App']['DetectExistingGame'](arg1);
@@ -59,16 +66,40 @@ export function GetInstalledEngines() {
   return window['go']['main']['App']['GetInstalledEngines']();
 }
 
+export function GetProjectAudio(arg1) {
+  return window['go']['main']['App']['GetProjectAudio'](arg1);
+}
+
 export function GetProjectFightersAndStages(arg1) {
   return window['go']['main']['App']['GetProjectFightersAndStages'](arg1);
+}
+
+export function GetProjectFonts(arg1) {
+  return window['go']['main']['App']['GetProjectFonts'](arg1);
+}
+
+export function GetProjectLifebars(arg1) {
+  return window['go']['main']['App']['GetProjectLifebars'](arg1);
 }
 
 export function GetProjectLogs(arg1) {
   return window['go']['main']['App']['GetProjectLogs'](arg1);
 }
 
+export function GetProjectMotifs(arg1) {
+  return window['go']['main']['App']['GetProjectMotifs'](arg1);
+}
+
 export function GetProjectRoster(arg1) {
   return window['go']['main']['App']['GetProjectRoster'](arg1);
+}
+
+export function GetProjectStages(arg1) {
+  return window['go']['main']['App']['GetProjectStages'](arg1);
+}
+
+export function GetProjectStoryboards(arg1) {
+  return window['go']['main']['App']['GetProjectStoryboards'](arg1);
 }
 
 export function GetRecentProjects() {
@@ -111,6 +142,10 @@ export function InspectProjectDifferences(arg1) {
   return window['go']['main']['App']['InspectProjectDifferences'](arg1);
 }
 
+export function InspectProjectFile(arg1, arg2) {
+  return window['go']['main']['App']['InspectProjectFile'](arg1, arg2);
+}
+
 export function IsProjectRunning(arg1) {
   return window['go']['main']['App']['IsProjectRunning'](arg1);
 }
@@ -133,6 +168,10 @@ export function OpenProject(arg1) {
 
 export function OpenProjectLogsFolder(arg1) {
   return window['go']['main']['App']['OpenProjectLogsFolder'](arg1);
+}
+
+export function ReadProjectFile(arg1, arg2) {
+  return window['go']['main']['App']['ReadProjectFile'](arg1, arg2);
 }
 
 export function RegisterVault(arg1) {
@@ -163,6 +202,10 @@ export function SaveGameConfig(arg1, arg2) {
   return window['go']['main']['App']['SaveGameConfig'](arg1, arg2);
 }
 
+export function SaveProjectFile(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SaveProjectFile'](arg1, arg2, arg3);
+}
+
 export function SaveProjectRoster(arg1, arg2) {
   return window['go']['main']['App']['SaveProjectRoster'](arg1, arg2);
 }
@@ -171,8 +214,16 @@ export function SelectArchiveDialog() {
   return window['go']['main']['App']['SelectArchiveDialog']();
 }
 
+export function SelectAudioFileDialog() {
+  return window['go']['main']['App']['SelectAudioFileDialog']();
+}
+
 export function SelectDirectoryDialog(arg1) {
   return window['go']['main']['App']['SelectDirectoryDialog'](arg1);
+}
+
+export function SelectFontFileDialog() {
+  return window['go']['main']['App']['SelectFontFileDialog']();
 }
 
 export function SelectMultipleArchivesDialog() {
@@ -181,6 +232,30 @@ export function SelectMultipleArchivesDialog() {
 
 export function SelectProjectDirectoryDialog() {
   return window['go']['main']['App']['SelectProjectDirectoryDialog']();
+}
+
+export function SetActiveLifebar(arg1, arg2) {
+  return window['go']['main']['App']['SetActiveLifebar'](arg1, arg2);
+}
+
+export function SetActiveMotif(arg1, arg2) {
+  return window['go']['main']['App']['SetActiveMotif'](arg1, arg2);
+}
+
+export function SetFighterHomeStage(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetFighterHomeStage'](arg1, arg2, arg3);
+}
+
+export function SetSystemBGM(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetSystemBGM'](arg1, arg2, arg3);
+}
+
+export function SetSystemFontMapping(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SetSystemFontMapping'](arg1, arg2, arg3, arg4);
+}
+
+export function SetSystemStoryboard(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetSystemStoryboard'](arg1, arg2, arg3);
 }
 
 export function StopProject(arg1) {
@@ -193,6 +268,10 @@ export function SwitchProjectEngine(arg1, arg2) {
 
 export function SyncProjectAssets(arg1) {
   return window['go']['main']['App']['SyncProjectAssets'](arg1);
+}
+
+export function ToggleStageExtraStage(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ToggleStageExtraStage'](arg1, arg2, arg3);
 }
 
 export function UnregisterVault(arg1) {
@@ -214,86 +293,3 @@ export function VerifyAndRepairProject(arg1) {
 export function VerifyAndRepairProjectWithMode(arg1, arg2) {
   return window['go']['main']['App']['VerifyAndRepairProjectWithMode'](arg1, arg2);
 }
-
-
-export function GetProjectStages(arg1) {
-  return window['go']['main']['App']['GetProjectStages'](arg1);
-}
-
-export function ToggleStageExtraStage(arg1, arg2, arg3) {
-  return window['go']['main']['App']['ToggleStageExtraStage'](arg1, arg2, arg3);
-}
-
-export function SetFighterHomeStage(arg1, arg2, arg3) {
-  return window['go']['main']['App']['SetFighterHomeStage'](arg1, arg2, arg3);
-}
-
-export function DeleteProjectStage(arg1, arg2) {
-  return window['go']['main']['App']['DeleteProjectStage'](arg1, arg2);
-}
-
-export function GetProjectMotifs(arg1) {
-  return window['go']['main']['App']['GetProjectMotifs'](arg1);
-}
-
-export function SetActiveMotif(arg1, arg2) {
-  return window['go']['main']['App']['SetActiveMotif'](arg1, arg2);
-}
-
-export function GetProjectLifebars(arg1) {
-  return window['go']['main']['App']['GetProjectLifebars'](arg1);
-}
-
-export function SetActiveLifebar(arg1, arg2) {
-  return window['go']['main']['App']['SetActiveLifebar'](arg1, arg2);
-}
-
-export function GetProjectAudio(arg1) {
-  return window['go']['main']['App']['GetProjectAudio'](arg1);
-}
-
-export function SetSystemBGM(arg1, arg2, arg3) {
-  return window['go']['main']['App']['SetSystemBGM'](arg1, arg2, arg3);
-}
-
-export function DeleteProjectAudio(arg1, arg2) {
-  return window['go']['main']['App']['DeleteProjectAudio'](arg1, arg2);
-}
-
-export function GetProjectFonts(arg1) {
-  return window['go']['main']['App']['GetProjectFonts'](arg1);
-}
-
-export function SetSystemFontMapping(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['SetSystemFontMapping'](arg1, arg2, arg3, arg4);
-}
-
-export function GetProjectStoryboards(arg1) {
-  return window['go']['main']['App']['GetProjectStoryboards'](arg1);
-}
-
-export function SetSystemStoryboard(arg1, arg2, arg3) {
-  return window['go']['main']['App']['SetSystemStoryboard'](arg1, arg2, arg3);
-}
-
-export function SelectAudioFileDialog() {
-  return window['go']['main']['App']['SelectAudioFileDialog']();
-}
-
-export function SelectFontFileDialog() {
-  return window['go']['main']['App']['SelectFontFileDialog']();
-}
-
-export function ReadProjectFile(arg1, arg2) {
-  return window['go']['main']['App']['ReadProjectFile'](arg1, arg2);
-}
-
-export function SaveProjectFile(arg1, arg2, arg3) {
-  return window['go']['main']['App']['SaveProjectFile'](arg1, arg2, arg3);
-}
-
-export function InspectProjectFile(arg1, arg2) {
-  return window['go']['main']['App']['InspectProjectFile'](arg1, arg2);
-}
-
-
