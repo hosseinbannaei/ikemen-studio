@@ -28,6 +28,8 @@ export function GetSettings():Promise<config.Settings>;
 
 export function ImportExistingGame(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<project.ProjectManifest>;
 
+export function ImportExistingGameWithOptions(arg1:project.ImportOptions):Promise<project.ProjectManifest>;
+
 export function IsProjectRunning(arg1:string):Promise<boolean>;
 
 export function LaunchProject(arg1:string):Promise<void>;
@@ -57,3 +59,5 @@ export function SwitchProjectEngine(arg1:string,arg2:string):Promise<void>;
 export function UpdateSettings(arg1:config.Settings):Promise<void>;
 
 export function VerifyAndRepairProject(arg1:string):Promise<project.VerificationReport>;
+
+export function VerifyAndRepairProjectWithMode(arg1:string,arg2:boolean):Promise<project.VerificationReport>;

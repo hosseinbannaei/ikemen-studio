@@ -6,6 +6,7 @@ import type {
   CrashDiagnosticInfo,
   ExistingGameInspection,
   EngineBackupInfo,
+  ImportOptions,
 } from '../types';
 import {
   CreateProject,
@@ -18,9 +19,11 @@ import {
   IsProjectRunning,
   OpenFolderInExplorer,
   VerifyAndRepairProject,
+  VerifyAndRepairProjectWithMode,
   OpenProjectLogsFolder,
   DetectExistingGame,
   ImportExistingGame,
+  ImportExistingGameWithOptions,
   SwitchProjectEngine,
   GetEngineBackups,
   RollbackProjectEngine,
@@ -208,10 +211,26 @@ function createProjectStore() {
     engineVersion: string,
     author: string
   ): Promise<boolean> {
+    return importExistingWithOptions({
+      sourceDir: srcDir,
+      targetDir,
+      projectName: name,
+      engineVersion,
+      author,
+      mode: 'rebuild',
+      includeChars: true,
+      includeStages: true,
+      includeSound: true,
+      includeFonts: true,
+      includeRoster: true,
+    });
+  }
+
+  async function importExistingWithOptions(opts: ImportOptions): Promise<boolean> {
     initEvents();
     update((s) => ({ ...s, loading: true }));
     try {
-      const manifest = await ImportExistingGame(srcDir, targetDir, name, engineVersion, author);
+      const manifest = await ImportExistingGameWithOptions(opts as any);
       update((s) => ({ ...s, current: manifest as any, loading: false }));
       toastStore.success('Game Imported', `Successfully imported ${manifest.name}`);
       await loadRecent();
@@ -250,7 +269,7 @@ function createProjectStore() {
       // If manifest open failed, check if it is a raw game folder to import
       const inspection = await checkRawGame(dir);
       if (inspection && inspection.isValid) {
-        toastStore.info('Existing Game Detected', 'Configure import destination');
+        toastStore.info('Existing Game Detected', 'Configure import settings');
         return { opened: false, inspection, selectedPath: dir };
       }
 
@@ -431,6 +450,10 @@ function createProjectStore() {
   }
 
   async function verifyAndRepair(projectDir?: string): Promise<VerificationReport | null> {
+    return verifyAndRepairWithMode(false, projectDir);
+  }
+
+  async function verifyAndRepairWithMode(updateCoreSystem: boolean, projectDir?: string): Promise<VerificationReport | null> {
     let targetPath = projectDir || '';
     if (!targetPath) {
       update((s) => {
@@ -446,13 +469,13 @@ function createProjectStore() {
 
     update((s) => ({ ...s, isVerifying: true }));
     try {
-      const report = await VerifyAndRepairProject(targetPath);
+      const report = await VerifyAndRepairProjectWithMode(targetPath, updateCoreSystem);
       update((s) => ({ ...s, isVerifying: false }));
 
       if (report.repairedCount > 0) {
         toastStore.success(
-          'Verification Complete',
-          `Restored ${report.repairedCount} missing file${report.repairedCount > 1 ? 's' : ''} (Checked ${report.totalChecked} files)`
+          updateCoreSystem ? 'Core Engine Updated' : 'Verification Complete',
+          `Updated/restored ${report.repairedCount} file${report.repairedCount > 1 ? 's' : ''} (Checked ${report.totalChecked} files)`
         );
       } else {
         toastStore.success('Verification Complete', `All ${report.totalChecked} engine runtime files are intact`);
@@ -498,6 +521,7 @@ function createProjectStore() {
     open,
     checkRawGame,
     importExisting,
+    importExistingWithOptions,
     removeRecent,
     selectAndOpen,
     close,
@@ -510,6 +534,7 @@ function createProjectStore() {
     getGameConfig,
     saveGameConfig,
     verifyAndRepair,
+    verifyAndRepairWithMode,
     openLogs,
     dismissCrash,
   };

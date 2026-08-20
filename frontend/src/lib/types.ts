@@ -66,6 +66,7 @@ export interface VerificationReport {
   logFilePath: string;
   success: boolean;
   errorMessage?: string;
+  mode?: string;
 }
 
 export interface CrashDiagnosticInfo {
@@ -84,6 +85,25 @@ export interface ExistingGameInspection {
   hasSystemDef: boolean;
   hasConfigIni: boolean;
   sourcePath: string;
+  detectedEngineVersion?: string;
+}
+
+export interface ImportOptions {
+  sourceDir: string;
+  targetDir: string;
+  projectName: string;
+  engineVersion: string;
+  engineChannel?: string;
+  enginePath?: string;
+  baselineEnginePath?: string;
+  author?: string;
+  mode?: 'rebuild' | 'diff_upgrade' | 'legacy_match';
+  includeChars?: boolean;
+  includeStages?: boolean;
+  includeSound?: boolean;
+  includeFonts?: boolean;
+  includeRoster?: boolean;
+  includeLegacySystem?: boolean;
 }
 
 export interface EngineBackupInfo {

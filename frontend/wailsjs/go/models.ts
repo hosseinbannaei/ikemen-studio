@@ -192,6 +192,7 @@ export namespace project {
 	    hasSystemDef: boolean;
 	    hasConfigIni: boolean;
 	    sourcePath: string;
+	    detectedEngineVersion: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ExistingGameInspection(source);
@@ -207,6 +208,47 @@ export namespace project {
 	        this.hasSystemDef = source["hasSystemDef"];
 	        this.hasConfigIni = source["hasConfigIni"];
 	        this.sourcePath = source["sourcePath"];
+	        this.detectedEngineVersion = source["detectedEngineVersion"];
+	    }
+	}
+	export class ImportOptions {
+	    sourceDir: string;
+	    targetDir: string;
+	    projectName: string;
+	    engineVersion: string;
+	    engineChannel: string;
+	    enginePath: string;
+	    baselineEnginePath: string;
+	    author: string;
+	    mode: string;
+	    includeChars: boolean;
+	    includeStages: boolean;
+	    includeSound: boolean;
+	    includeFonts: boolean;
+	    includeRoster: boolean;
+	    includeLegacySystem: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImportOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sourceDir = source["sourceDir"];
+	        this.targetDir = source["targetDir"];
+	        this.projectName = source["projectName"];
+	        this.engineVersion = source["engineVersion"];
+	        this.engineChannel = source["engineChannel"];
+	        this.enginePath = source["enginePath"];
+	        this.baselineEnginePath = source["baselineEnginePath"];
+	        this.author = source["author"];
+	        this.mode = source["mode"];
+	        this.includeChars = source["includeChars"];
+	        this.includeStages = source["includeStages"];
+	        this.includeSound = source["includeSound"];
+	        this.includeFonts = source["includeFonts"];
+	        this.includeRoster = source["includeRoster"];
+	        this.includeLegacySystem = source["includeLegacySystem"];
 	    }
 	}
 	export class ProjectManifest {
@@ -261,6 +303,7 @@ export namespace project {
 	    logFilePath: string;
 	    success: boolean;
 	    errorMessage?: string;
+	    mode: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new VerificationReport(source);
@@ -275,6 +318,7 @@ export namespace project {
 	        this.logFilePath = source["logFilePath"];
 	        this.success = source["success"];
 	        this.errorMessage = source["errorMessage"];
+	        this.mode = source["mode"];
 	    }
 	}
 

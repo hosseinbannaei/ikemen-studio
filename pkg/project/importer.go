@@ -10,28 +10,37 @@ import (
 
 // ExistingGameInspection details the scan results of a raw MUGEN / Ikemen folder
 type ExistingGameInspection struct {
-	IsValid        bool   `json:"isValid"`
-	DetectedName   string `json:"detectedName"`
-	CharacterCount int    `json:"characterCount"`
-	StageCount     int    `json:"stageCount"`
-	HasSelectDef   bool   `json:"hasSelectDef"`
-	HasSystemDef   bool   `json:"hasSystemDef"`
-	HasConfigIni   bool   `json:"hasConfigIni"`
-	SourcePath     string `json:"sourcePath"`
+	IsValid                bool   `json:"isValid"`
+	DetectedName           string `json:"detectedName"`
+	CharacterCount         int    `json:"characterCount"`
+	StageCount             int    `json:"stageCount"`
+	HasSelectDef           bool   `json:"hasSelectDef"`
+	HasSystemDef           bool   `json:"hasSystemDef"`
+	HasConfigIni           bool   `json:"hasConfigIni"`
+	SourcePath             string `json:"sourcePath"`
+	DetectedEngineVersion  string `json:"detectedEngineVersion"`
 }
 
-// ImportOptions parameters for importing an existing game directory non-destructively
+// ImportOptions parameters for importing an existing game directory
 type ImportOptions struct {
-	SourceDir     string
-	TargetDir     string
-	ProjectName   string
-	EngineVersion string
-	EngineChannel string
-	EnginePath    string
-	Author        string
+	SourceDir           string `json:"sourceDir"`
+	TargetDir           string `json:"targetDir"`
+	ProjectName         string `json:"projectName"`
+	EngineVersion       string `json:"engineVersion"`
+	EngineChannel       string `json:"engineChannel"`
+	EnginePath          string `json:"enginePath"`
+	BaselineEnginePath  string `json:"baselineEnginePath"`
+	Author              string `json:"author"`
+	Mode                string `json:"mode"` // "rebuild", "diff_upgrade", "legacy_match"
+	IncludeChars        bool   `json:"includeChars"`
+	IncludeStages       bool   `json:"includeStages"`
+	IncludeSound        bool   `json:"includeSound"`
+	IncludeFonts        bool   `json:"includeFonts"`
+	IncludeRoster       bool   `json:"includeRoster"`
+	IncludeLegacySystem bool   `json:"includeLegacySystem"`
 }
 
-// DetectExistingGame analyzes a folder to determine if it is an existing MUGEN or Ikemen game
+// DetectExistingGame analyzes a folder to determine if it is an existing MUGEN or Ikemen game and detects engine version
 func DetectExistingGame(dir string) (*ExistingGameInspection, error) {
 	if dir == "" {
 		return nil, fmt.Errorf("directory cannot be empty")
@@ -43,8 +52,9 @@ func DetectExistingGame(dir string) (*ExistingGameInspection, error) {
 	}
 
 	inspection := &ExistingGameInspection{
-		SourcePath:   dir,
-		DetectedName: filepath.Base(dir),
+		SourcePath:            dir,
+		DetectedName:          filepath.Base(dir),
+		DetectedEngineVersion: DetectLegacyEngineVersion(dir),
 	}
 
 	// Check data/system.def or data/select.def
@@ -85,7 +95,6 @@ func DetectExistingGame(dir string) (*ExistingGameInspection, error) {
 		}
 	}
 
-	// Valid if it has select.def, system.def, or chars/stages content
 	if inspection.HasSelectDef || inspection.HasSystemDef || inspection.CharacterCount > 0 || inspection.StageCount > 0 {
 		inspection.IsValid = true
 	}
@@ -93,7 +102,7 @@ func DetectExistingGame(dir string) (*ExistingGameInspection, error) {
 	return inspection, nil
 }
 
-// ImportExistingGame creates a safe, non-destructive copy of user game content into targetDir with Ikemen Studio manifest
+// ImportExistingGame creates a clean, non-destructive import of user game content into targetDir
 func ImportExistingGame(opts ImportOptions) (*ProjectManifest, error) {
 	if opts.SourceDir == "" {
 		return nil, fmt.Errorf("source directory cannot be empty")
@@ -108,10 +117,20 @@ func ImportExistingGame(opts ImportOptions) (*ProjectManifest, error) {
 		opts.ProjectName = filepath.Base(opts.TargetDir)
 	}
 	if opts.EngineVersion == "" {
-		opts.EngineVersion = "latest"
+		opts.EngineVersion = "nightly"
 	}
 	if opts.EngineChannel == "" {
 		opts.EngineChannel = "stable"
+	}
+	if opts.Mode == "" {
+		opts.Mode = "rebuild"
+	}
+	if opts.Mode == "rebuild" && !opts.IncludeChars && !opts.IncludeStages && !opts.IncludeSound && !opts.IncludeFonts && !opts.IncludeRoster {
+		opts.IncludeChars = true
+		opts.IncludeStages = true
+		opts.IncludeSound = true
+		opts.IncludeFonts = true
+		opts.IncludeRoster = true
 	}
 
 	// 1. Create target directory
@@ -119,21 +138,65 @@ func ImportExistingGame(opts ImportOptions) (*ProjectManifest, error) {
 		return nil, fmt.Errorf("failed to create destination directory: %w", err)
 	}
 
-	// 2. Copy user asset folders from source (chars, stages, data, font, sound, video)
-	userFolders := []string{"chars", "stages", "data", "font", "sound", "video"}
-	for _, folder := range userFolders {
-		srcFolder := filepath.Join(opts.SourceDir, folder)
-		if fi, err := os.Stat(srcFolder); err == nil && fi.IsDir() {
-			destFolder := filepath.Join(opts.TargetDir, folder)
-			_ = copyDirRecursive(srcFolder, destFolder)
-		} else {
-			// Ensure empty standard directory exists if not present in source
-			_ = os.MkdirAll(filepath.Join(opts.TargetDir, folder), 0755)
+	// Ensure basic target folders exist
+	for _, folder := range []string{"chars", "stages", "data", "font", "sound", "video", "save/logs"} {
+		_ = os.MkdirAll(filepath.Join(opts.TargetDir, folder), 0755)
+	}
+
+	// 2. Sync clean engine runtime assets from selected official engine first
+	if opts.EnginePath != "" {
+		_ = EnsureProjectRuntimeAssets(opts.EnginePath, opts.TargetDir)
+		// Copy clean engine data templates (like clean common1.cns.zss, etc.)
+		engineDataDir := filepath.Join(opts.EnginePath, "data")
+		if dfi, err := os.Stat(engineDataDir); err == nil && dfi.IsDir() {
+			_ = copyDirRecursive(engineDataDir, filepath.Join(opts.TargetDir, "data"))
 		}
 	}
 
-	// 3. Ensure save/logs folder exists
-	_ = os.MkdirAll(filepath.Join(opts.TargetDir, "save", "logs"), 0755)
+	// 3. Migrate user assets according to selected mode / checklist
+	if opts.IncludeChars || opts.Mode == "legacy_match" {
+		srcChars := filepath.Join(opts.SourceDir, "chars")
+		if fi, err := os.Stat(srcChars); err == nil && fi.IsDir() {
+			_ = copyDirRecursive(srcChars, filepath.Join(opts.TargetDir, "chars"))
+		}
+	}
+
+	if opts.IncludeStages || opts.Mode == "legacy_match" {
+		srcStages := filepath.Join(opts.SourceDir, "stages")
+		if fi, err := os.Stat(srcStages); err == nil && fi.IsDir() {
+			_ = copyDirRecursive(srcStages, filepath.Join(opts.TargetDir, "stages"))
+		}
+	}
+
+	if opts.IncludeSound || opts.Mode == "legacy_match" {
+		srcSound := filepath.Join(opts.SourceDir, "sound")
+		if fi, err := os.Stat(srcSound); err == nil && fi.IsDir() {
+			_ = copyDirRecursive(srcSound, filepath.Join(opts.TargetDir, "sound"))
+		}
+	}
+
+	if opts.IncludeFonts || opts.Mode == "legacy_match" {
+		srcFont := filepath.Join(opts.SourceDir, "font")
+		if fi, err := os.Stat(srcFont); err == nil && fi.IsDir() {
+			_ = copyDirRecursive(srcFont, filepath.Join(opts.TargetDir, "font"))
+		}
+	}
+
+	// Migrate select.def (user's roster)
+	if opts.IncludeRoster || opts.Mode == "legacy_match" {
+		srcSelect := filepath.Join(opts.SourceDir, "data", "select.def")
+		if _, err := os.Stat(srcSelect); err == nil {
+			_ = copyFile(srcSelect, filepath.Join(opts.TargetDir, "data", "select.def"))
+		}
+	}
+
+	// In legacy_match or if requested, copy custom system files
+	if opts.IncludeLegacySystem || opts.Mode == "legacy_match" {
+		srcData := filepath.Join(opts.SourceDir, "data")
+		if fi, err := os.Stat(srcData); err == nil && fi.IsDir() {
+			_ = copyDirRecursive(srcData, filepath.Join(opts.TargetDir, "data"))
+		}
+	}
 
 	// Copy config.ini if present in source
 	srcConfig := filepath.Join(opts.SourceDir, "save", "config.ini")
@@ -144,18 +207,13 @@ func ImportExistingGame(opts ImportOptions) (*ProjectManifest, error) {
 		_ = copyFile(srcConfig, filepath.Join(opts.TargetDir, "save", "config.ini"))
 	}
 
-	// 4. Ensure runtime assets (external scripts, lib DLLs) exist from selected engine
-	if opts.EnginePath != "" {
-		_ = EnsureProjectRuntimeAssets(opts.EnginePath, opts.TargetDir)
-	}
-
-	// 5. Ensure select.def exists
+	// 4. Ensure select.def exists if not copied
 	selectDefPath := filepath.Join(opts.TargetDir, "data", "select.def")
 	if _, err := os.Stat(selectDefPath); os.IsNotExist(err) {
 		_ = os.WriteFile(selectDefPath, []byte(DefaultSelectDefContent), 0644)
 	}
 
-	// 6. Create and save project manifest
+	// 5. Create and save project manifest
 	manifest := &ProjectManifest{
 		Name:    opts.ProjectName,
 		Version: "1.0.0",

@@ -218,35 +218,44 @@ func (a *App) DetectExistingGame(dir string) (*project.ExistingGameInspection, e
 
 // ImportExistingGame copies an existing MUGEN/Ikemen folder into a new managed studio project
 func (a *App) ImportExistingGame(srcDir, targetDir, name, engineVersion, author string) (*project.ProjectManifest, error) {
+	return a.ImportExistingGameWithOptions(project.ImportOptions{
+		SourceDir:     srcDir,
+		TargetDir:     targetDir,
+		ProjectName:   name,
+		EngineVersion: engineVersion,
+		Author:        author,
+		Mode:          "rebuild",
+		IncludeChars:  true,
+		IncludeStages: true,
+		IncludeSound:  true,
+		IncludeFonts:  true,
+		IncludeRoster: true,
+	})
+}
+
+// ImportExistingGameWithOptions imports legacy game with custom mode and checklist
+func (a *App) ImportExistingGameWithOptions(opts project.ImportOptions) (*project.ProjectManifest, error) {
 	cfg, err := config.LoadSettings()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load settings: %w", err)
 	}
 
-	var enginePath string
-	if engineVersion != "" {
-		enginePath = filepath.Join(cfg.EnginesDir, engineVersion)
+	if opts.EngineVersion != "" {
+		opts.EnginePath = filepath.Join(cfg.EnginesDir, opts.EngineVersion)
 	}
 
 	channel := "stable"
-	if strings.Contains(strings.ToLower(engineVersion), "nightly") || strings.Contains(strings.ToLower(engineVersion), "pre") {
+	if strings.Contains(strings.ToLower(opts.EngineVersion), "nightly") || strings.Contains(strings.ToLower(opts.EngineVersion), "pre") {
 		channel = "nightly"
 	}
+	opts.EngineChannel = channel
 
-	manifest, err := project.ImportExistingGame(project.ImportOptions{
-		SourceDir:     srcDir,
-		TargetDir:     targetDir,
-		ProjectName:   name,
-		EngineVersion: engineVersion,
-		EngineChannel: channel,
-		EnginePath:    enginePath,
-		Author:        author,
-	})
+	manifest, err := project.ImportExistingGame(opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to import game: %w", err)
 	}
 
-	a.addToRecentProjects(targetDir, cfg)
+	a.addToRecentProjects(opts.TargetDir, cfg)
 	return manifest, nil
 }
 
@@ -308,6 +317,11 @@ func (a *App) RollbackProjectEngine(projectDir, backupID string) error {
 
 // VerifyAndRepairProject validates core game assets against the configured engine and repairs missing files
 func (a *App) VerifyAndRepairProject(projectDir string) (*project.VerificationReport, error) {
+	return a.VerifyAndRepairProjectWithMode(projectDir, false)
+}
+
+// VerifyAndRepairProjectWithMode validates core assets and optionally updates core system data scripts (common1.cns.zss, etc.)
+func (a *App) VerifyAndRepairProjectWithMode(projectDir string, updateCoreSystem bool) (*project.VerificationReport, error) {
 	manifest, err := project.LoadManifest(projectDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load project manifest: %w", err)
@@ -319,7 +333,7 @@ func (a *App) VerifyAndRepairProject(projectDir string) (*project.VerificationRe
 	}
 
 	engineDir := filepath.Join(cfg.EnginesDir, manifest.Engine.Version)
-	return project.VerifyAndRepairProject(engineDir, projectDir)
+	return project.VerifyAndRepairProjectWithMode(engineDir, projectDir, updateCoreSystem)
 }
 
 // OpenProjectLogsFolder opens the project's save/logs directory in the OS file explorer

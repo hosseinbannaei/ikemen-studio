@@ -155,3 +155,45 @@ func TestVerifyAndRepairProject(t *testing.T) {
 		t.Errorf("expected log file %s to exist", report.LogFilePath)
 	}
 }
+
+func TestVerifyAndRepairCoreSystemMode(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "ikemen-verify-core-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	engineDir := filepath.Join(tmpDir, "engine")
+	projectDir := filepath.Join(tmpDir, "project")
+
+	// Setup clean engine common1.cns.zss
+	_ = os.MkdirAll(filepath.Join(engineDir, "data"), 0755)
+	_ = os.WriteFile(filepath.Join(engineDir, "data", "common1.cns.zss"), []byte("modern_zss_content"), 0644)
+
+	// Setup project with outdated common1.cns.zss and custom select.def
+	_ = os.MkdirAll(filepath.Join(projectDir, "data"), 0755)
+	_ = os.WriteFile(filepath.Join(projectDir, "data", "common1.cns.zss"), []byte("legacy_outdated_content"), 0644)
+	_ = os.WriteFile(filepath.Join(projectDir, "data", "select.def"), []byte("my_custom_character"), 0644)
+
+	// Run Core System Data Update mode
+	report, err := VerifyAndRepairProjectWithMode(engineDir, projectDir, true)
+	if err != nil {
+		t.Fatalf("VerifyAndRepairProjectWithMode failed: %v", err)
+	}
+
+	if report.Mode != "core_update" {
+		t.Errorf("expected mode 'core_update', got %s", report.Mode)
+	}
+
+	// Verify common1.cns.zss was replaced with clean engine version
+	updatedContent, _ := os.ReadFile(filepath.Join(projectDir, "data", "common1.cns.zss"))
+	if string(updatedContent) != "modern_zss_content" {
+		t.Errorf("expected common1.cns.zss to be updated to modern content, got %s", string(updatedContent))
+	}
+
+	// Verify custom select.def was NEVER touched
+	selectContent, _ := os.ReadFile(filepath.Join(projectDir, "data", "select.def"))
+	if string(selectContent) != "my_custom_character" {
+		t.Errorf("custom select.def was modified! content: %s", string(selectContent))
+	}
+}

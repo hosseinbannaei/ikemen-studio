@@ -50,6 +50,10 @@ export function ImportExistingGame(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['ImportExistingGame'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function ImportExistingGameWithOptions(arg1) {
+  return window['go']['main']['App']['ImportExistingGameWithOptions'](arg1);
+}
+
 export function IsProjectRunning(arg1) {
   return window['go']['main']['App']['IsProjectRunning'](arg1);
 }
@@ -108,4 +112,8 @@ export function UpdateSettings(arg1) {
 
 export function VerifyAndRepairProject(arg1) {
   return window['go']['main']['App']['VerifyAndRepairProject'](arg1);
+}
+
+export function VerifyAndRepairProjectWithMode(arg1, arg2) {
+  return window['go']['main']['App']['VerifyAndRepairProjectWithMode'](arg1, arg2);
 }

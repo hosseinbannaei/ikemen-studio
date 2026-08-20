@@ -3,6 +3,7 @@
   import { projectStore } from '../stores/projectStore';
   import { engineStore } from '../stores/engineStore';
   import type { VerificationReport } from '../types';
+  import VerifyOptionsModal from './VerifyOptionsModal.svelte';
   import VerifyReportModal from './VerifyReportModal.svelte';
   import CustomLaunchModal from './CustomLaunchModal.svelte';
   import GameConfigModal from './GameConfigModal.svelte';
@@ -34,7 +35,8 @@
 
   export let onBackToProjects: () => void;
 
-  let showVerifyModal = false;
+  let showVerifyOptionsModal = false;
+  let showVerifyReportModal = false;
   let showCustomLaunchModal = false;
   let showGameConfigModal = false;
   let showEngineConfirmModal = false;
@@ -54,11 +56,13 @@
     { label: 'Sound & Music', subpath: 'sound', icon: Music, desc: 'BGM tracks, hits, and announcer voices', color: 'from-rose-500/20 to-red-500/20 text-rose-400 border-rose-500/30' },
   ];
 
-  async function handleVerifyClick() {
-    showVerifyModal = true;
-    isVerifying = true;
-    verificationReport = await projectStore.verifyAndRepair();
-    isVerifying = false;
+  function handleVerifyClick() {
+    showVerifyOptionsModal = true;
+  }
+
+  function handleReportReceived(report: VerificationReport) {
+    verificationReport = report;
+    showVerifyReportModal = true;
   }
 
   async function handleLaunchMode(mode: 'normal' | 'training' | 'debug') {
@@ -454,12 +458,20 @@
     </div>
   </div>
 
+  <!-- Pre-Verification Options & Confirmation Modal -->
+  {#if showVerifyOptionsModal}
+    <VerifyOptionsModal
+      onClose={() => (showVerifyOptionsModal = false)}
+      onReport={handleReportReceived}
+    />
+  {/if}
+
   <!-- Verification Report Modal -->
-  {#if showVerifyModal}
+  {#if showVerifyReportModal}
     <VerifyReportModal
       report={verificationReport}
-      isLoading={isVerifying}
-      onClose={() => (showVerifyModal = false)}
+      isLoading={false}
+      onClose={() => (showVerifyReportModal = false)}
     />
   {/if}
 
