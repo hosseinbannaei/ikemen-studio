@@ -71,6 +71,22 @@
   let selectedGridSlots = new Set<number>();
   let isGridSelectMode = false;
 
+  // Right-click context menu
+  let contextMenu: { x: number; y: number; slotIndex: number } | null = null;
+
+  function handleSlotRightClick(e: MouseEvent, idx: number) {
+    e.preventDefault();
+    ensureSlotCapacity(idx);
+    roster && (roster.slots = [...roster.slots]);
+    selectedSlotIndex = idx;
+    selectedGridSlots = new Set();
+    contextMenu = { x: e.clientX, y: e.clientY, slotIndex: idx };
+  }
+
+  function closeContextMenu() {
+    contextMenu = null;
+  }
+
   onMount(async () => {
     await loadRosterData();
     await vaultStore.loadVaults();
@@ -174,17 +190,11 @@
   // --- Roster Grid Actions ---
   function autoPopulateAllProjectCharacters() {
     if (!roster || !roster.available_characters) return;
-    if (roster.available_characters.length === 0) {
-      alert('No available characters found in project chars/ directory.');
-      return;
-    }
-    if (roster.slots.length > 0 && !confirm(`Auto-populate all ${roster.available_characters.length} project characters into the roster? This will arrange them sequentially.`)) {
-      return;
-    }
+    if (roster.available_characters.length === 0) return;
 
     roster.slots = roster.available_characters.map((char, i) => ({
       index: i,
-      type: 'character',
+      type: 'character' as const,
       character: char.name,
       display_name: char.display_name || char.name,
       author: char.author || 'Unknown',
@@ -200,10 +210,6 @@
 
   function clearEntireRoster() {
     if (!roster) return;
-    if (roster.slots.length === 0) return;
-    if (!confirm('Are you sure you want to clear all character slots from select.def?')) {
-      return;
-    }
     roster.slots = [];
     selectedSlotIndex = null;
     selectedGridSlots = new Set();
@@ -469,7 +475,8 @@
   }
 
   function clearSlot(index: number) {
-    if (!roster || !roster.slots[index]) return;
+    if (!roster) return;
+    ensureSlotCapacity(index);
     roster.slots[index] = {
       index,
       type: 'empty',
@@ -1108,6 +1115,7 @@
                 }"
                 draggable="true"
                 on:click={(e) => selectOrActivateSlot(idx, e)}
+                on:contextmenu={(e) => handleSlotRightClick(e, idx)}
                 on:mouseenter={() => (hoveredSlotIndex = idx)}
                 on:mouseleave={() => (hoveredSlotIndex = null)}
                 on:dragstart={(e) => handleSlotDragStart(e, idx)}
@@ -1276,6 +1284,60 @@
       {/if}
     </main>
 
+    <!-- Right-click Context Menu -->
+    {#if contextMenu}
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="fixed inset-0 z-40" on:click={closeContextMenu}></div>
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div
+        class="fixed z-50 bg-dark-850 border border-dark-600 rounded-xl shadow-2xl py-1.5 min-w-[170px]"
+        style="left: {contextMenu.x}px; top: {Math.min(contextMenu.y, window.innerHeight - 130)}px;"
+        on:click|stopPropagation
+      >
+        <div class="px-3 py-1.5 border-b border-dark-700 mb-1">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Slot #{contextMenu.slotIndex + 1}</span>
+        </div>
+        <button
+          type="button"
+          class="w-full text-left px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-dark-700 flex items-center gap-2 transition"
+          on:click={() => { clearSlot(contextMenu!.slotIndex); closeContextMenu(); }}
+        >
+          <X class="w-3.5 h-3.5 text-slate-400" />
+          Clear to Empty
+        </button>
+        {#if roster && roster.slots[contextMenu.slotIndex]?.type === 'character'}
+          <button
+            type="button"
+            class="w-full text-left px-3 py-2 text-xs font-semibold text-purple-300 hover:bg-dark-700 flex items-center gap-2 transition"
+            on:click={() => { if (contextMenu !== null && roster) { roster.slots[contextMenu.slotIndex] = { index: contextMenu.slotIndex, type: 'randomselect', character: 'randomselect', display_name: 'Random Select', include_in_arcade: true }; roster.slots = [...roster.slots]; } closeContextMenu(); }}
+          >
+            <HelpCircle class="w-3.5 h-3.5 text-purple-400" />
+            Set Random Select
+          </button>
+          <button
+            type="button"
+            class="w-full text-left px-3 py-2 text-xs font-semibold text-amber-300 hover:bg-dark-700 flex items-center gap-2 transition"
+            on:click={() => { if (contextMenu !== null) { toggleSlotDisabled(contextMenu.slotIndex); } closeContextMenu(); }}
+          >
+            <EyeOff class="w-3.5 h-3.5 text-amber-400" />
+            Toggle Disabled
+          </button>
+        {/if}
+        <div class="border-t border-dark-700 mt-1 pt-1">
+          <button
+            type="button"
+            class="w-full text-left px-3 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 transition"
+            on:click={() => { deleteSlot(contextMenu!.slotIndex); closeContextMenu(); }}
+          >
+            <Trash2 class="w-3.5 h-3.5" />
+            Delete Slot
+          </button>
+        </div>
+      </div>
+    {/if}
+
     <!-- 3. Right Slot Inspector Drawer -->
     {#if selectedSlot && roster}
       <aside class="w-80 bg-dark-850 border-l border-dark-600/60 p-5 flex flex-col justify-between overflow-y-auto z-10">
@@ -1370,9 +1432,15 @@
                 </label>
                 <input
                   type="text"
-                  bind:value={selectedSlot.music}
+                  value={selectedSlot.music || ''}
                   placeholder="sound/my_theme.mp3"
                   class="w-full bg-dark-800 border border-dark-600 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500"
+                  on:input={(e) => {
+                    if (selectedSlotIndex !== null && roster?.slots[selectedSlotIndex]) {
+                      roster.slots[selectedSlotIndex].music = e.currentTarget.value;
+                      roster.slots = [...roster.slots];
+                    }
+                  }}
                 />
               </div>
 
@@ -1387,11 +1455,17 @@
                     type="number"
                     min="0"
                     max="10"
-                    bind:value={selectedSlot.order}
+                    value={selectedSlot.order ?? 0}
                     class="w-20 bg-dark-800 border border-dark-600 rounded-xl px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-amber-500"
+                    on:input={(e) => {
+                      if (selectedSlotIndex !== null && roster?.slots[selectedSlotIndex]) {
+                        roster.slots[selectedSlotIndex].order = parseInt(e.currentTarget.value) || 0;
+                        roster.slots = [...roster.slots];
+                      }
+                    }}
                   />
                   <span class="text-[11px] text-slate-500">
-                    {selectedSlot.order === 0 ? 'Normal Fighter' : `Boss Tier ${selectedSlot.order}`}
+                    {(selectedSlot.order ?? 0) === 0 ? 'Normal Fighter' : `Boss Tier ${selectedSlot.order}`}
                   </span>
                 </div>
               </div>
