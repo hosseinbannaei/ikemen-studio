@@ -233,6 +233,7 @@ func ParseSelectDef(selectDefPath, projectDir string) ([]RosterCharacterSlot, []
 	var extraStages []string
 
 	currentSection := ""
+	reachedCharactersList := false
 	scanner := bufio.NewScanner(strings.NewReader(string(data)))
 	slotIdx := 0
 
@@ -250,8 +251,20 @@ func ParseSelectDef(selectDefPath, projectDir string) ([]RosterCharacterSlot, []
 		}
 
 		if strings.HasPrefix(currentSection, "[characters]") {
+			// Check if tutorial comment or section boundary
+			lowerTrimmed := strings.ToLower(trimmed)
+			if strings.Contains(lowerTrimmed, "insert your characters below") || strings.Contains(lowerTrimmed, "characters below") {
+				reachedCharactersList = true
+				continue
+			}
+
 			// Check if disabled character (commented out line)
 			if strings.HasPrefix(trimmed, ";") {
+				if !reachedCharactersList {
+					// Still in tutorial header; skip example lines
+					continue
+				}
+
 				commentText := strings.TrimPrefix(trimmed, ";")
 				commentText = strings.TrimSpace(commentText)
 				// Check if it matches a character name pattern
@@ -274,6 +287,9 @@ func ParseSelectDef(selectDefPath, projectDir string) ([]RosterCharacterSlot, []
 				}
 				continue
 			}
+
+			// First uncommented character line automatically activates character list mode
+			reachedCharactersList = true
 
 			// Clean inline comments
 			cleanLine := trimmed
@@ -466,6 +482,11 @@ func resolveCharInfo(projectDir, charName string) (string, string, string, strin
 			_, b64, _ := vault.ExtractAndCachePortrait(projectDir, "chars/"+cleanName, sffPath)
 			b64Portrait = b64
 		}
+	}
+
+	// Disambiguate duplicate character display names like kfm variants
+	if strings.EqualFold(displayName, "Kung Fu Man") && cleanName != "kfm" {
+		displayName = fmt.Sprintf("Kung Fu Man (%s)", cleanName)
 	}
 
 	return cleanName, displayName, author, b64Portrait

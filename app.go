@@ -746,7 +746,7 @@ func (a *App) SaveProjectRoster(projectDir string, roster project.ProjectRoster)
 	return project.SaveProjectRoster(projectDir, roster)
 }
 
-// ExportProjectAssetsToVault scans the project chars and stages and imports them into a vault
+// ExportProjectAssetsToVault scans the project chars and stages and imports custom assets into a vault
 func (a *App) ExportProjectAssetsToVault(projectDir, targetVaultID string) (*vault.IngestResult, error) {
 	if a.vaultManager == nil {
 		vm, err := vault.NewVaultManager()
@@ -756,15 +756,37 @@ func (a *App) ExportProjectAssetsToVault(projectDir, targetVaultID string) (*vau
 		a.vaultManager = vm
 	}
 
+	stockAssets := map[string]bool{
+		"kfm": true, "kfm_zss": true, "kfm720": true, "kfm_zaxis": true,
+		"stage0.def": true, "stage0-720.def": true, "stage1.def": true,
+		"interactivestage.def": true, "stage3d.def": true, "stage3d_outline.def": true,
+		"stagez.def": true, "kfm.def": true,
+	}
+
 	charsDir := filepath.Join(projectDir, "chars")
 	stagesDir := filepath.Join(projectDir, "stages")
 	var paths []string
 
-	if _, err := os.Stat(charsDir); err == nil {
-		paths = append(paths, charsDir)
+	// Scan chars
+	if entries, err := os.ReadDir(charsDir); err == nil {
+		for _, e := range entries {
+			if (e.IsDir() || e.Type()&os.ModeSymlink != 0) && !strings.HasPrefix(e.Name(), ".") {
+				if !stockAssets[strings.ToLower(e.Name())] {
+					paths = append(paths, filepath.Join(charsDir, e.Name()))
+				}
+			}
+		}
 	}
-	if _, err := os.Stat(stagesDir); err == nil {
-		paths = append(paths, stagesDir)
+
+	// Scan stages
+	if entries, err := os.ReadDir(stagesDir); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".def") {
+				if !stockAssets[strings.ToLower(e.Name())] {
+					paths = append(paths, filepath.Join(stagesDir, e.Name()))
+				}
+			}
+		}
 	}
 
 	if len(paths) == 0 {

@@ -105,3 +105,56 @@ stages/bridge.def
 		t.Fatalf("Expected 4 slots on re-read, got %d", len(roster2.Slots))
 	}
 }
+
+func TestSelectDefTutorialSkipping(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "select_tutorial_test_*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	for _, name := range []string{"kfm", "kfm_zss", "kfm720", "cammy", "karin"} {
+		charsDir := filepath.Join(tempDir, "chars", name)
+		_ = os.MkdirAll(charsDir, 0755)
+		_ = os.WriteFile(filepath.Join(charsDir, name+".def"), []byte("[Info]\nname = "+name+"\ndisplayname = "+name), 0644)
+	}
+
+	selectDefPath := filepath.Join(tempDir, "data", "select.def")
+	_ = os.MkdirAll(filepath.Dir(selectDefPath), 0755)
+
+	content := `[Characters]
+ ;How to add characters
+ ;Use the format:
+ ; kfm, stages/mybg.def
+ ; kfm/alt-kfm.def, stages/mybg.def
+ ; kfm, random
+ ;Insert your characters below.
+;kfm_zss, stages/kfm.def
+;kfm720, stages/kfm.def
+cammy
+karin
+randomselect
+`
+	_ = os.WriteFile(selectDefPath, []byte(content), 0644)
+
+	roster, err := GetProjectRoster(tempDir)
+	if err != nil {
+		t.Fatalf("GetProjectRoster failed: %v", err)
+	}
+
+	// Should only parse the 2 commented kfm variants under "Insert your characters below" + 2 active characters + 1 randomselect = 5 slots
+	if len(roster.Slots) != 5 {
+		t.Fatalf("Expected 5 slots (skipping tutorial kfm examples), got %d", len(roster.Slots))
+	}
+
+	if roster.Slots[0].Character != "kfm_zss" || roster.Slots[0].Type != "disabled" {
+		t.Errorf("Expected slot 0 to be disabled kfm_zss, got %+v", roster.Slots[0])
+	}
+	if roster.Slots[1].Character != "kfm720" || roster.Slots[1].Type != "disabled" {
+		t.Errorf("Expected slot 1 to be disabled kfm720, got %+v", roster.Slots[1])
+	}
+	if roster.Slots[2].Character != "cammy" || roster.Slots[2].Type != "character" {
+		t.Errorf("Expected slot 2 to be cammy, got %+v", roster.Slots[2])
+	}
+}
+
