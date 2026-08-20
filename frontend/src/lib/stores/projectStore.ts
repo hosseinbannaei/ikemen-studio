@@ -39,6 +39,7 @@ import {
   RepairGameConfig,
   ResetGameConfig,
   GetProjectLogs,
+  GetProjectFightersAndStages,
 } from '../../../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
 import { toastStore } from './toastStore';
@@ -623,6 +624,24 @@ function createProjectStore() {
     }
   }
 
+  async function getFightersAndStages(projectDir?: string) {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return { characters: [], stages: [] };
+
+    try {
+      const res = await (GetProjectFightersAndStages as any)(targetPath);
+      return res || { characters: [], stages: [] };
+    } catch {
+      return { characters: [], stages: [] };
+    }
+  }
+
   function dismissCrash() {
     update((s) => ({ ...s, activeCrash: null }));
   }
@@ -658,6 +677,7 @@ function createProjectStore() {
     getLogs,
     openLogs,
     dismissCrash,
+    getFightersAndStages,
   };
 }
 

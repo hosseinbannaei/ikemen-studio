@@ -451,6 +451,41 @@ func (a *App) GetProjectLogs(projectDir string) (string, error) {
 	return "No log files recorded yet.", nil
 }
 
+// ProjectFightersAndStages contains detected character and stage identifiers for quick match launching
+type ProjectFightersAndStages struct {
+	Characters []string `json:"characters"`
+	Stages     []string `json:"stages"`
+}
+
+// GetProjectFightersAndStages returns available character folders and stage .def files
+func (a *App) GetProjectFightersAndStages(projectDir string) (*ProjectFightersAndStages, error) {
+	res := &ProjectFightersAndStages{
+		Characters: make([]string, 0),
+		Stages:     make([]string, 0),
+	}
+
+	charsDir := filepath.Join(projectDir, "chars")
+	if entries, err := os.ReadDir(charsDir); err == nil {
+		for _, e := range entries {
+			if e.IsDir() && !strings.HasPrefix(e.Name(), ".") && !strings.EqualFold(e.Name(), "randomselect") {
+				res.Characters = append(res.Characters, e.Name())
+			}
+		}
+	}
+
+	stagesDir := filepath.Join(projectDir, "stages")
+	if entries, err := os.ReadDir(stagesDir); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".def") {
+				baseName := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
+				res.Stages = append(res.Stages, baseName)
+			}
+		}
+	}
+
+	return res, nil
+}
+
 func (a *App) addToRecentProjects(projectDir string, cfg *config.Settings) {
 	var updated []string
 	updated = append(updated, projectDir)

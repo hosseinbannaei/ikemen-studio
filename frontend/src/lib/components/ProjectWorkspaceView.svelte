@@ -71,9 +71,16 @@
     if (mode === 'normal') {
       await projectStore.launch();
     } else if (mode === 'training') {
-      await projectStore.launchWithOptions(['-training']);
+      const data = await projectStore.getFightersAndStages();
+      const char = data.characters.length > 0 ? data.characters[0] : 'kfm';
+      const stage = data.stages.length > 0 ? data.stages[0] : '';
+      const args = ['-p1', char, '-p2', char, '-p2.ai', '0', '-time', '-1'];
+      if (stage) {
+        args.push('-s', stage);
+      }
+      await projectStore.launchWithOptions(args);
     } else if (mode === 'debug') {
-      await projectStore.launchWithOptions(['-log', '-debug']);
+      await projectStore.launchWithOptions(['-debug', '-maxpowermode']);
     }
   }
 
@@ -315,8 +322,8 @@
                   >
                     <Sparkles class="w-3.5 h-3.5 text-indigo-400" />
                     <div>
-                      <div>Direct Training Mode</div>
-                      <div class="text-[10px] text-slate-500 font-mono">-training</div>
+                      <div>Direct Training / Sparring</div>
+                      <div class="text-[10px] text-slate-500 font-mono">-p1 ... -p2 ... -time -1</div>
                     </div>
                   </button>
 
@@ -328,7 +335,7 @@
                     <Terminal class="w-3.5 h-3.5 text-amber-400" />
                     <div>
                       <div>Developer / Debug Mode</div>
-                      <div class="text-[10px] text-slate-500 font-mono">-log -debug</div>
+                      <div class="text-[10px] text-slate-500 font-mono">-debug -maxpowermode</div>
                     </div>
                   </button>
 

@@ -163,3 +163,9 @@ export interface AssetSyncOptions {
   syncRuntime?: boolean;
   resetConfig?: boolean;
 }
+
+export interface ProjectFightersAndStages {
+  characters: string[];
+  stages: string[];
+}
+

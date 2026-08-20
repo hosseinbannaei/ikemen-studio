@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { projectStore } from '../stores/projectStore';
+  import type { ProjectFightersAndStages } from '../types';
   import {
     Play,
     Terminal,
@@ -10,27 +11,51 @@
     ShieldAlert,
     Trash2,
     Sliders,
+    Swords,
+    VolumeX,
+    Maximize2,
+    EyeOff,
+    Zap,
   } from 'lucide-svelte';
 
   export let onClose: () => void;
 
   let customArgs = '';
-  let flagTraining = false;
   let flagDebug = false;
-  let flagNoMusic = false;
+  let flagMaxPower = false;
+  let flagNoSound = false;
+  let flagWindowed = false;
   let flagFullscreen = false;
+  let flagHideLifebars = false;
 
+  // Quick VS / Matchup Builder
+  let enableQuickMatch = false;
+  let p1Char = '';
+  let p2Char = '';
+  let selectedStage = '';
+  let isTrainingDummy = true;
+
+  let availableData: ProjectFightersAndStages = { characters: [], stages: [] };
   let history: string[] = [];
 
   const HISTORY_KEY = 'ikemen_studio_launch_history';
 
-  onMount(() => {
+  onMount(async () => {
     try {
       const saved = localStorage.getItem(HISTORY_KEY);
       if (saved) {
         history = JSON.parse(saved);
       }
     } catch {}
+
+    availableData = await projectStore.getFightersAndStages();
+    if (availableData.characters.length > 0) {
+      p1Char = availableData.characters[0];
+      p2Char = availableData.characters.length > 1 ? availableData.characters[1] : availableData.characters[0];
+    }
+    if (availableData.stages.length > 0) {
+      selectedStage = availableData.stages[0];
+    }
   });
 
   function saveToHistory(argStr: string) {
@@ -53,16 +78,29 @@
   function compileArgs(): string[] {
     const args: string[] = [];
 
-    if (flagTraining) args.push('-training');
-    if (flagDebug) {
-      args.push('-log');
-      args.push('-debug');
+    // Quick Match / Sparring Arguments
+    if (enableQuickMatch && p1Char && p2Char) {
+      args.push('-p1', p1Char);
+      args.push('-p2', p2Char);
+      if (isTrainingDummy) {
+        args.push('-p2.ai', '0');
+        args.push('-time', '-1');
+      }
+      if (selectedStage) {
+        args.push('-s', selectedStage);
+      }
     }
-    if (flagNoMusic) args.push('-nomusic');
-    if (flagFullscreen) args.push('-fullscreen');
 
+    // Engine Core Flags
+    if (flagDebug) args.push('-debug');
+    if (flagMaxPower) args.push('-maxpowermode');
+    if (flagNoSound) args.push('-nosound');
+    if (flagWindowed) args.push('-windowed');
+    if (flagFullscreen) args.push('-fullscreen');
+    if (flagHideLifebars) args.push('-togglelifebars');
+
+    // Freeform Arguments
     if (customArgs.trim()) {
-      // Split whitespace respecting quotes if possible or standard split
       const parts = customArgs.trim().split(/\s+/);
       args.push(...parts);
     }
@@ -72,8 +110,9 @@
 
   async function handleLaunch() {
     const args = compileArgs();
-    if (customArgs.trim()) {
-      saveToHistory(customArgs.trim());
+    const joined = args.join(' ');
+    if (joined) {
+      saveToHistory(joined);
     }
     onClose();
     await projectStore.launchWithOptions(args);
@@ -111,23 +150,39 @@
 
     <!-- Content -->
     <div class="p-6 space-y-5 overflow-y-auto flex-1">
-      <!-- Quick Toggles -->
+      <!-- Quick Flag Presets -->
       <div class="space-y-2">
-        <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Quick Flag Presets</label>
+        <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Engine Flags</label>
         <div class="grid grid-cols-2 gap-2.5">
           <label class="flex items-center gap-3 p-3 rounded-xl bg-dark-900 border border-dark-600/60 hover:border-dark-500 cursor-pointer transition">
-            <input type="checkbox" bind:checked={flagTraining} class="rounded border-dark-600 bg-dark-800 text-indigo-600 focus:ring-0 w-4 h-4" />
+            <input type="checkbox" bind:checked={flagDebug} class="rounded border-dark-600 bg-dark-800 text-indigo-600 focus:ring-0 w-4 h-4" />
             <div class="text-xs">
-              <span class="font-semibold text-slate-200 block">Training Mode</span>
-              <span class="text-[11px] text-slate-500 font-mono">-training</span>
+              <span class="font-semibold text-slate-200 block">Debug / Hitbox HUD</span>
+              <span class="text-[11px] text-slate-500 font-mono">-debug</span>
             </div>
           </label>
 
           <label class="flex items-center gap-3 p-3 rounded-xl bg-dark-900 border border-dark-600/60 hover:border-dark-500 cursor-pointer transition">
-            <input type="checkbox" bind:checked={flagDebug} class="rounded border-dark-600 bg-dark-800 text-indigo-600 focus:ring-0 w-4 h-4" />
+            <input type="checkbox" bind:checked={flagMaxPower} class="rounded border-dark-600 bg-dark-800 text-indigo-600 focus:ring-0 w-4 h-4" />
             <div class="text-xs">
-              <span class="font-semibold text-slate-200 block">Developer / Debug Mode</span>
-              <span class="text-[11px] text-slate-500 font-mono">-log -debug</span>
+              <span class="font-semibold text-slate-200 block">Infinite / Max Power</span>
+              <span class="text-[11px] text-slate-500 font-mono">-maxpowermode</span>
+            </div>
+          </label>
+
+          <label class="flex items-center gap-3 p-3 rounded-xl bg-dark-900 border border-dark-600/60 hover:border-dark-500 cursor-pointer transition">
+            <input type="checkbox" bind:checked={flagNoSound} class="rounded border-dark-600 bg-dark-800 text-indigo-600 focus:ring-0 w-4 h-4" />
+            <div class="text-xs">
+              <span class="font-semibold text-slate-200 block">Mute Audio</span>
+              <span class="text-[11px] text-slate-500 font-mono">-nosound</span>
+            </div>
+          </label>
+
+          <label class="flex items-center gap-3 p-3 rounded-xl bg-dark-900 border border-dark-600/60 hover:border-dark-500 cursor-pointer transition">
+            <input type="checkbox" bind:checked={flagWindowed} class="rounded border-dark-600 bg-dark-800 text-indigo-600 focus:ring-0 w-4 h-4" />
+            <div class="text-xs">
+              <span class="font-semibold text-slate-200 block">Force Windowed</span>
+              <span class="text-[11px] text-slate-500 font-mono">-windowed</span>
             </div>
           </label>
 
@@ -140,13 +195,103 @@
           </label>
 
           <label class="flex items-center gap-3 p-3 rounded-xl bg-dark-900 border border-dark-600/60 hover:border-dark-500 cursor-pointer transition">
-            <input type="checkbox" bind:checked={flagNoMusic} class="rounded border-dark-600 bg-dark-800 text-indigo-600 focus:ring-0 w-4 h-4" />
+            <input type="checkbox" bind:checked={flagHideLifebars} class="rounded border-dark-600 bg-dark-800 text-indigo-600 focus:ring-0 w-4 h-4" />
             <div class="text-xs">
-              <span class="font-semibold text-slate-200 block">Mute BGM</span>
-              <span class="text-[11px] text-slate-500 font-mono">-nomusic</span>
+              <span class="font-semibold text-slate-200 block">Hide HUD Lifebars</span>
+              <span class="text-[11px] text-slate-500 font-mono">-togglelifebars</span>
             </div>
           </label>
         </div>
+      </div>
+
+      <!-- Quick Match / Direct Matchup Setup -->
+      <div class="p-4 rounded-xl bg-dark-900 border border-dark-600/60 space-y-3">
+        <label class="flex items-center justify-between cursor-pointer">
+          <div class="flex items-center gap-2">
+            <Swords class="w-4 h-4 text-indigo-400" />
+            <span class="text-xs font-bold text-slate-200">Direct Quick Match / Sparring</span>
+          </div>
+          <input
+            type="checkbox"
+            bind:checked={enableQuickMatch}
+            class="rounded border-dark-600 bg-dark-800 text-indigo-600 focus:ring-0 w-4 h-4"
+          />
+        </label>
+
+        {#if enableQuickMatch}
+          <div class="grid grid-cols-2 gap-3 pt-2 border-t border-dark-600/40 animate-in fade-in duration-150">
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Player 1 Fighter</label>
+              {#if availableData.characters.length > 0}
+                <select
+                  bind:value={p1Char}
+                  class="w-full bg-dark-800 border border-dark-600 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
+                >
+                  {#each availableData.characters as ch}
+                    <option value={ch}>{ch}</option>
+                  {/each}
+                </select>
+              {:else}
+                <input
+                  type="text"
+                  bind:value={p1Char}
+                  placeholder="kfm"
+                  class="w-full bg-dark-800 border border-dark-600 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
+                />
+              {/if}
+            </div>
+
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Player 2 Fighter</label>
+              {#if availableData.characters.length > 0}
+                <select
+                  bind:value={p2Char}
+                  class="w-full bg-dark-800 border border-dark-600 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
+                >
+                  {#each availableData.characters as ch}
+                    <option value={ch}>{ch}</option>
+                  {/each}
+                </select>
+              {:else}
+                <input
+                  type="text"
+                  bind:value={p2Char}
+                  placeholder="kfm"
+                  class="w-full bg-dark-800 border border-dark-600 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
+                />
+              {/if}
+            </div>
+
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Arena Stage</label>
+              {#if availableData.stages.length > 0}
+                <select
+                  bind:value={selectedStage}
+                  class="w-full bg-dark-800 border border-dark-600 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="">Default Stage</option>
+                  {#each availableData.stages as st}
+                    <option value={st}>{st}</option>
+                  {/each}
+                </select>
+              {:else}
+                <input
+                  type="text"
+                  bind:value={selectedStage}
+                  placeholder="stages/stage0.def"
+                  class="w-full bg-dark-800 border border-dark-600 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
+                />
+              {/if}
+            </div>
+
+            <div class="flex items-end">
+              <label class="flex items-center gap-2 p-2 rounded-lg bg-dark-800 border border-dark-600 cursor-pointer w-full">
+                <input type="checkbox" bind:checked={isTrainingDummy} class="rounded border-dark-600 bg-dark-800 text-indigo-600 focus:ring-0 w-3.5 h-3.5" />
+                <div class="text-[11px] text-slate-300">Training Dummy (Infinite Time & AI 0)</div>
+              </label>
+            </div>
+          </div>
+        {/if}
       </div>
 
       <!-- Freeform CLI Input -->
@@ -156,12 +301,12 @@
           <input
             type="text"
             bind:value={customArgs}
-            placeholder="-p1 kfm -p2 kfm720 -s stages/stage0.def -p1.ai 8"
+            placeholder="-ailevel 8 -speed 2 -width 1920 -height 1080"
             class="w-full bg-dark-900 border border-dark-600 rounded-xl px-4 py-2.5 text-xs text-slate-100 font-mono placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 shadow-inner"
           />
         </div>
         <p class="text-[11px] text-slate-500">
-          Examples: <code class="text-purple-300 font-mono">-p1 char1 -p2 char2</code> or <code class="text-purple-300 font-mono">-r 1920x1080</code>
+          Command Preview: <code class="text-purple-300 font-mono">{compileArgs().join(' ') || '(normal launcher)'}</code>
         </p>
       </div>
 

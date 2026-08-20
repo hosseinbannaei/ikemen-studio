@@ -189,6 +189,25 @@ export namespace engine {
 
 }
 
+export namespace main {
+	
+	export class ProjectFightersAndStages {
+	    characters: string[];
+	    stages: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ProjectFightersAndStages(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.characters = source["characters"];
+	        this.stages = source["stages"];
+	    }
+	}
+
+}
+
 export namespace project {
 	
 	export class AssetSyncOptions {

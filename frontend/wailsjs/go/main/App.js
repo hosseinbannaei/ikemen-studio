@@ -38,6 +38,10 @@ export function GetInstalledEngines() {
   return window['go']['main']['App']['GetInstalledEngines']();
 }
 
+export function GetProjectFightersAndStages(arg1) {
+  return window['go']['main']['App']['GetProjectFightersAndStages'](arg1);
+}
+
 export function GetProjectLogs(arg1) {
   return window['go']['main']['App']['GetProjectLogs'](arg1);
 }
