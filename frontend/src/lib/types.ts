@@ -360,4 +360,56 @@ export interface ProjectRoster {
   available_stages: string[];
 }
 
+export interface FileSectionSummary {
+  name: string;
+  line_start: number;
+  line_end: number;
+  item_count: number;
+}
+
+export interface AnimActionSummary {
+  action_no: number;
+  description?: string;
+  frame_count: number;
+  total_ticks: number;
+  has_loop: boolean;
+  has_hitbox: boolean;
+  has_hurtbox: boolean;
+}
+
+export interface CommandEntrySummary {
+  name: string;
+  command: string;
+  time: number;
+  buffer_time: number;
+}
+
+export interface StateDefSummary {
+  state_no: number;
+  name?: string;
+  type: string;
+  move_type: string;
+  physics: string;
+  anim: number;
+  controller_count: number;
+}
+
+export interface FileInspectionResult {
+  rel_path: string;
+  file_type: string;
+  category: string;
+  display_name: string;
+  total_lines: number;
+  size_bytes: number;
+  sections: FileSectionSummary[];
+  key_values: Record<string, string>;
+  anim_actions?: AnimActionSummary[];
+  commands?: CommandEntrySummary[];
+  state_defs?: StateDefSummary[];
+  raw_content: string;
+  is_editable: boolean;
+  syntax_mode: 'ini' | 'zss' | 'lua' | 'glsl' | 'plain';
+}
+
+
 

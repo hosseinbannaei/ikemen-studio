@@ -10,6 +10,8 @@
   import GameConfigModal from './GameConfigModal.svelte';
   import ConfirmModal from './ConfirmModal.svelte';
   import AddFromVaultModal from './AddFromVaultModal.svelte';
+  import FileEditorModal from './FileEditorModal.svelte';
+
   import {
     Play,
     Square,
@@ -66,7 +68,9 @@
   let showEngineConfirmModal = false;
   let showRollbackModal = false;
   let showAddFromVaultModal = false;
+  let selectedEditFilePath: string | null = null;
   let vaultTargetCategory: 'fighters' | 'stages' | 'motifs' | 'lifebars' | 'sounds' | 'fonts' | 'storyboards' = 'fighters';
+
   let selectedBackupId = '';
   let pendingEngineVersion = '';
   let selectedEngineVersion = '';
@@ -874,6 +878,95 @@
       </div>
     </div>
 
+    <!-- Direct File Inspector & Code Editor Quick Access -->
+    <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 shadow-lg space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-brand-500/20 text-brand-400 border border-brand-500/30 flex items-center justify-center">
+            <FileCode class="w-4 h-4" />
+          </div>
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Universal File Inspector & Code Editor</h3>
+            <p class="text-[11px] text-slate-400">Directly inspect, analyze structural metrics, and live-edit any project file</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="px-3 py-1.5 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition"
+            on:click={() => {
+              const custom = prompt('Enter relative project path (e.g. data/select.def, chars/kfm/kfm.def, save/config.ini):', 'data/select.def');
+              if (custom && custom.trim()) {
+                selectedEditFilePath = custom.trim();
+              }
+            }}
+          >
+            <Search class="w-3.5 h-3.5 text-brand-400" />
+            <span>Open Custom Path...</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick File Action Chips -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 pt-1">
+        <button
+          type="button"
+          class="p-2.5 rounded-xl bg-dark-900/80 hover:bg-dark-700/80 border border-dark-700/80 hover:border-brand-500/40 text-left transition group"
+          on:click={() => selectedEditFilePath = 'data/select.def'}
+        >
+          <div class="text-[10px] font-bold text-slate-400 group-hover:text-brand-300 transition">ROSTER FILE</div>
+          <div class="text-xs font-mono font-bold text-white truncate">select.def</div>
+        </button>
+
+        <button
+          type="button"
+          class="p-2.5 rounded-xl bg-dark-900/80 hover:bg-dark-700/80 border border-dark-700/80 hover:border-purple-500/40 text-left transition group"
+          on:click={() => selectedEditFilePath = 'data/system.def'}
+        >
+          <div class="text-[10px] font-bold text-slate-400 group-hover:text-purple-300 transition">SYSTEM MOTIF</div>
+          <div class="text-xs font-mono font-bold text-white truncate">system.def</div>
+        </button>
+
+        <button
+          type="button"
+          class="p-2.5 rounded-xl bg-dark-900/80 hover:bg-dark-700/80 border border-dark-700/80 hover:border-rose-500/40 text-left transition group"
+          on:click={() => selectedEditFilePath = 'data/fight.def'}
+        >
+          <div class="text-[10px] font-bold text-slate-400 group-hover:text-rose-300 transition">FIGHT HUD</div>
+          <div class="text-xs font-mono font-bold text-white truncate">fight.def</div>
+        </button>
+
+        <button
+          type="button"
+          class="p-2.5 rounded-xl bg-dark-900/80 hover:bg-dark-700/80 border border-dark-700/80 hover:border-amber-500/40 text-left transition group"
+          on:click={() => selectedEditFilePath = 'save/config.ini'}
+        >
+          <div class="text-[10px] font-bold text-slate-400 group-hover:text-amber-300 transition">CONFIG FILE</div>
+          <div class="text-xs font-mono font-bold text-white truncate">config.ini</div>
+        </button>
+
+        <button
+          type="button"
+          class="p-2.5 rounded-xl bg-dark-900/80 hover:bg-dark-700/80 border border-dark-700/80 hover:border-emerald-500/40 text-left transition group"
+          on:click={() => selectedEditFilePath = 'data/gofx/gofx.def'}
+        >
+          <div class="text-[10px] font-bold text-slate-400 group-hover:text-emerald-300 transition">GLOBAL FX</div>
+          <div class="text-xs font-mono font-bold text-white truncate">gofx.def</div>
+        </button>
+
+        <button
+          type="button"
+          class="p-2.5 rounded-xl bg-dark-900/80 hover:bg-dark-700/80 border border-dark-700/80 hover:border-cyan-500/40 text-left transition group"
+          on:click={() => selectedEditFilePath = 'external/gamecontrollerdb.txt'}
+        >
+          <div class="text-[10px] font-bold text-slate-400 group-hover:text-cyan-300 transition">CONTROLLERS</div>
+          <div class="text-xs font-mono font-bold text-white truncate">gamecontrollerdb</div>
+        </button>
+      </div>
+    </div>
+
+
     <!-- Engine Console & Log Preview Console -->
     <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 shadow-lg space-y-3">
       <div class="flex items-center justify-between">
@@ -1004,4 +1097,14 @@
       onClose={() => (showAddFromVaultModal = false)}
     />
   {/if}
+
+  <!-- Universal File Editor Modal -->
+  {#if selectedEditFilePath}
+    <FileEditorModal
+      projectDir={$projectStore.current.path}
+      filePath={selectedEditFilePath}
+      onClose={() => (selectedEditFilePath = null)}
+    />
+  {/if}
 {/if}
+

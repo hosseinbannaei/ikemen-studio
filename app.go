@@ -917,5 +917,21 @@ func (a *App) SelectFontFileDialog() (string, error) {
 	})
 }
 
+// ReadProjectFile safely reads text content of a file within a project
+func (a *App) ReadProjectFile(projectDir, relPath string) (string, error) {
+	return project.ReadProjectFile(projectDir, relPath)
+}
+
+// SaveProjectFile safely writes text content to a file within a project
+func (a *App) SaveProjectFile(projectDir, relPath, content string) error {
+	return project.SaveProjectFile(projectDir, relPath, content)
+}
+
+// InspectProjectFile analyzes any project file and extracts metadata, sections, and metrics
+func (a *App) InspectProjectFile(projectDir, relPath string) (*project.FileInspectionResult, error) {
+	return project.InspectProjectFile(projectDir, relPath)
+}
+
+
 
 

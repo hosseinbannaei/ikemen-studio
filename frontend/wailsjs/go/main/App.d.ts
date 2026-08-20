@@ -148,3 +148,10 @@ export function SelectAudioFileDialog():Promise<string>;
 
 export function SelectFontFileDialog():Promise<string>;
 
+export function ReadProjectFile(arg1:string,arg2:string):Promise<string>;
+
+export function SaveProjectFile(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function InspectProjectFile(arg1:string,arg2:string):Promise<project.FileInspectionResult>;
+
+

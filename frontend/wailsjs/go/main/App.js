@@ -284,3 +284,16 @@ export function SelectFontFileDialog() {
   return window['go']['main']['App']['SelectFontFileDialog']();
 }
 
+export function ReadProjectFile(arg1, arg2) {
+  return window['go']['main']['App']['ReadProjectFile'](arg1, arg2);
+}
+
+export function SaveProjectFile(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SaveProjectFile'](arg1, arg2, arg3);
+}
+
+export function InspectProjectFile(arg1, arg2) {
+  return window['go']['main']['App']['InspectProjectFile'](arg1, arg2);
+}
+
+
