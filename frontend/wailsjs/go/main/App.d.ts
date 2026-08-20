@@ -10,9 +10,15 @@ export function CreateProject(arg1:string,arg2:string,arg3:string,arg4:string):P
 
 export function DeleteEngine(arg1:string):Promise<void>;
 
+export function DetectExistingGame(arg1:string):Promise<project.ExistingGameInspection>;
+
 export function DownloadEngine(arg1:string):Promise<void>;
 
 export function FetchAvailableEngines():Promise<Array<engine.ReleaseInfo>>;
+
+export function GetEngineBackups(arg1:string):Promise<Array<project.EngineBackupInfo>>;
+
+export function GetGameConfig(arg1:string):Promise<Record<string, string>>;
 
 export function GetInstalledEngines():Promise<Array<engine.InstalledEngine>>;
 
@@ -20,9 +26,13 @@ export function GetRecentProjects():Promise<Array<string>>;
 
 export function GetSettings():Promise<config.Settings>;
 
+export function ImportExistingGame(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<project.ProjectManifest>;
+
 export function IsProjectRunning(arg1:string):Promise<boolean>;
 
 export function LaunchProject(arg1:string):Promise<void>;
+
+export function LaunchProjectWithOptions(arg1:string,arg2:Array<string>):Promise<void>;
 
 export function OpenFolderInExplorer(arg1:string):Promise<void>;
 
@@ -30,11 +40,19 @@ export function OpenProject(arg1:string):Promise<project.ProjectManifest>;
 
 export function OpenProjectLogsFolder(arg1:string):Promise<void>;
 
+export function RemoveRecentProject(arg1:string):Promise<void>;
+
+export function RollbackProjectEngine(arg1:string,arg2:string):Promise<void>;
+
+export function SaveGameConfig(arg1:string,arg2:Record<string, string>):Promise<void>;
+
 export function SelectDirectoryDialog(arg1:string):Promise<string>;
 
 export function SelectProjectDirectoryDialog():Promise<string>;
 
 export function StopProject(arg1:string):Promise<void>;
+
+export function SwitchProjectEngine(arg1:string,arg2:string):Promise<void>;
 
 export function UpdateSettings(arg1:config.Settings):Promise<void>;
 

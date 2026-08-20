@@ -1,7 +1,12 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { projectStore } from '../stores/projectStore';
+  import { engineStore } from '../stores/engineStore';
   import type { VerificationReport } from '../types';
   import VerifyReportModal from './VerifyReportModal.svelte';
+  import CustomLaunchModal from './CustomLaunchModal.svelte';
+  import GameConfigModal from './GameConfigModal.svelte';
+  import ConfirmModal from './ConfirmModal.svelte';
   import {
     Play,
     Square,
@@ -20,13 +25,26 @@
     Activity,
     Wrench,
     FileText,
+    ChevronDown,
+    Sliders,
+    Terminal,
+    RotateCcw,
+    Sparkles,
   } from 'lucide-svelte';
 
   export let onBackToProjects: () => void;
 
   let showVerifyModal = false;
+  let showCustomLaunchModal = false;
+  let showGameConfigModal = false;
+  let showEngineConfirmModal = false;
+  let showRollbackModal = false;
+  let selectedBackupId = '';
+  let pendingEngineVersion = '';
+
   let verificationReport: VerificationReport | null = null;
   let isVerifying = false;
+  let showPlayDropdown = false;
 
   const folderShortcuts = [
     { label: 'Characters', subpath: 'chars', icon: Users, desc: 'Fighter packages and .def files', color: 'from-blue-500/20 to-cyan-500/20 text-cyan-400 border-cyan-500/30' },
@@ -41,6 +59,39 @@
     isVerifying = true;
     verificationReport = await projectStore.verifyAndRepair();
     isVerifying = false;
+  }
+
+  async function handleLaunchMode(mode: 'normal' | 'training' | 'debug') {
+    showPlayDropdown = false;
+    if (mode === 'normal') {
+      await projectStore.launch();
+    } else if (mode === 'training') {
+      await projectStore.launchWithOptions(['-training']);
+    } else if (mode === 'debug') {
+      await projectStore.launchWithOptions(['-log', '-debug']);
+    }
+  }
+
+  function handleEngineSelect(e: Event) {
+    const val = (e.target as HTMLSelectElement).value;
+    if (val && val !== $projectStore.current?.engine.version) {
+      pendingEngineVersion = val;
+      showEngineConfirmModal = true;
+    }
+  }
+
+  async function confirmEngineSwitch() {
+    showEngineConfirmModal = false;
+    if (pendingEngineVersion) {
+      await projectStore.switchEngine(pendingEngineVersion);
+    }
+  }
+
+  async function confirmRollback() {
+    showRollbackModal = false;
+    if (selectedBackupId) {
+      await projectStore.rollbackEngine(selectedBackupId);
+    }
   }
 
   function formatDate(d: string): string {
@@ -59,6 +110,8 @@
   $: isBusy = $projectStore.gameState !== 'idle';
 </script>
 
+<svelte:window on:click={() => (showPlayDropdown = false)} />
+
 {#if $projectStore.current}
   <div class="max-w-6xl mx-auto p-8 space-y-6">
     <!-- Top Hero Banner / Project Details -->
@@ -67,9 +120,37 @@
         <div class="space-y-2">
           <div class="flex items-center gap-3 flex-wrap">
             <h1 class="text-2xl font-black text-slate-100">{$projectStore.current.name}</h1>
-            <span class="text-xs font-mono px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 font-semibold">
-              {$projectStore.current.engine.version} ({$projectStore.current.engine.channel})
-            </span>
+            
+            <!-- Engine Version Selector with Switcher -->
+            <div class="flex items-center gap-1.5">
+              <select
+                value={$projectStore.current.engine.version}
+                on:change={handleEngineSelect}
+                disabled={isBusy}
+                class="text-xs font-mono px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30 font-semibold focus:outline-none focus:border-purple-400 cursor-pointer disabled:opacity-50"
+                title="Change project engine version (with automated backup)"
+              >
+                {#each $engineStore.installed as engine}
+                  <option value={engine.version}>{engine.version} ({engine.channel})</option>
+                {/each}
+              </select>
+
+              <!-- Rollback Button if backups exist -->
+              {#if $projectStore.backups && $projectStore.backups.length > 0}
+                <button
+                  type="button"
+                  class="p-1 rounded-full bg-dark-700 hover:bg-dark-600 text-purple-400 border border-dark-600/60 transition"
+                  title="Rollback to previous engine backup ({$projectStore.backups[0].version})"
+                  on:click={() => {
+                    selectedBackupId = $projectStore.backups[0].id;
+                    showRollbackModal = true;
+                  }}
+                >
+                  <RotateCcw class="w-3.5 h-3.5" />
+                </button>
+              {/if}
+            </div>
+
             {#if $projectStore.gameState === 'running'}
               <span class="flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold">
                 <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
@@ -102,7 +183,19 @@
         </div>
 
         <!-- Action Controls -->
-        <div class="flex items-center gap-2.5 flex-wrap">
+        <div class="flex items-center gap-2 flex-wrap">
+          <!-- Game Settings (config.ini) -->
+          <button
+            type="button"
+            class="px-3 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600/70 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+            on:click={() => (showGameConfigModal = true)}
+            title="Edit Game Settings & save/config.ini"
+          >
+            <Sliders class="w-3.5 h-3.5 text-cyan-400" />
+            <span>Config</span>
+          </button>
+
+          <!-- Explorer -->
           <button
             type="button"
             class="px-3 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600/70 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
@@ -113,37 +206,40 @@
             <span>Explorer</span>
           </button>
 
+          <!-- Logs -->
           <button
             type="button"
             class="px-3 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600/70 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
             on:click={() => projectStore.openLogs()}
             title="Open project logs folder"
           >
-            <FileText class="w-3.5 h-3.5 text-cyan-400" />
+            <FileText class="w-3.5 h-3.5 text-amber-400" />
             <span>Logs</span>
           </button>
 
+          <!-- Verify & Repair -->
           <button
             type="button"
             disabled={isVerifying || isBusy}
-            class="px-3.5 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 disabled:opacity-50 border border-dark-600/70 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+            class="px-3 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 disabled:opacity-50 border border-dark-600/70 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
             on:click={handleVerifyClick}
-            title="Verify and repair core engine files (external scripts, shaders, DLLs)"
+            title="Verify and repair core engine files"
           >
             {#if isVerifying}
               <Loader2 class="w-3.5 h-3.5 animate-spin text-indigo-400" />
               <span>Verifying...</span>
             {:else}
               <Wrench class="w-3.5 h-3.5 text-purple-400" />
-              <span>Verify & Repair</span>
+              <span>Verify</span>
             {/if}
           </button>
 
+          <!-- Split Play / Launch Button -->
           {#if $projectStore.gameState === 'starting'}
             <button
               type="button"
               disabled
-              class="px-6 py-2.5 rounded-xl font-bold text-sm bg-dark-700 border border-dark-600 text-slate-400 cursor-not-allowed flex items-center gap-2.5 transition"
+              class="px-5 py-2.5 rounded-xl font-bold text-sm bg-dark-700 border border-dark-600 text-slate-400 cursor-not-allowed flex items-center gap-2 transition"
             >
               <Loader2 class="w-4 h-4 animate-spin text-amber-400" />
               <span>Starting...</span>
@@ -152,7 +248,7 @@
             <button
               type="button"
               disabled
-              class="px-6 py-2.5 rounded-xl font-bold text-sm bg-dark-700 border border-dark-600 text-slate-400 cursor-not-allowed flex items-center gap-2.5 transition"
+              class="px-5 py-2.5 rounded-xl font-bold text-sm bg-dark-700 border border-dark-600 text-slate-400 cursor-not-allowed flex items-center gap-2 transition"
             >
               <Loader2 class="w-4 h-4 animate-spin text-rose-400" />
               <span>Stopping...</span>
@@ -161,7 +257,7 @@
             <button
               type="button"
               disabled={!$projectStore.canStop}
-              class="px-6 py-2.5 rounded-xl font-bold text-sm shadow-md flex items-center gap-2.5 transition {
+              class="px-5 py-2.5 rounded-xl font-bold text-sm shadow-md flex items-center gap-2 transition {
                 $projectStore.canStop
                   ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950/50'
                   : 'bg-rose-900/60 text-rose-300 border border-rose-800/50 cursor-wait'
@@ -172,14 +268,84 @@
               <span>{$projectStore.canStop ? 'Stop Game' : 'Game Active...'}</span>
             </button>
           {:else}
-            <button
-              type="button"
-              class="px-6 py-2.5 rounded-xl font-bold text-sm shadow-md bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/50 flex items-center gap-2.5 transition"
-              on:click={() => projectStore.launch()}
-            >
-              <Play class="w-4 h-4 fill-current" />
-              <span>Launch Game</span>
-            </button>
+            <!-- Play Split Group -->
+            <div class="relative flex items-center" on:click|stopPropagation>
+              <button
+                type="button"
+                class="px-5 py-2.5 rounded-l-xl font-bold text-sm shadow-md bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/50 flex items-center gap-2 transition"
+                on:click={() => handleLaunchMode('normal')}
+              >
+                <Play class="w-4 h-4 fill-current" />
+                <span>Launch Game</span>
+              </button>
+
+              <button
+                type="button"
+                class="px-2.5 py-2.5 rounded-r-xl bg-emerald-700 hover:bg-emerald-600 border-l border-emerald-500/40 text-white transition"
+                on:click={() => (showPlayDropdown = !showPlayDropdown)}
+                title="Launch Options & Presets"
+              >
+                <ChevronDown class="w-4 h-4" />
+              </button>
+
+              <!-- Launch Dropdown Menu -->
+              {#if showPlayDropdown}
+                <div class="absolute right-0 top-full mt-2 w-64 rounded-2xl bg-dark-800 border border-dark-600/80 shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                  <button
+                    type="button"
+                    class="w-full px-3 py-2.5 rounded-xl text-left hover:bg-dark-700/80 text-xs font-semibold text-slate-200 flex items-center gap-2.5 transition"
+                    on:click={() => handleLaunchMode('normal')}
+                  >
+                    <Play class="w-3.5 h-3.5 text-emerald-400 fill-current" />
+                    <div>
+                      <div>Normal Game</div>
+                      <div class="text-[10px] text-slate-500">Standard arcade launcher</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="w-full px-3 py-2.5 rounded-xl text-left hover:bg-dark-700/80 text-xs font-semibold text-slate-200 flex items-center gap-2.5 transition"
+                    on:click={() => handleLaunchMode('training')}
+                  >
+                    <Sparkles class="w-3.5 h-3.5 text-indigo-400" />
+                    <div>
+                      <div>Direct Training Mode</div>
+                      <div class="text-[10px] text-slate-500 font-mono">-training</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="w-full px-3 py-2.5 rounded-xl text-left hover:bg-dark-700/80 text-xs font-semibold text-slate-200 flex items-center gap-2.5 transition"
+                    on:click={() => handleLaunchMode('debug')}
+                  >
+                    <Terminal class="w-3.5 h-3.5 text-amber-400" />
+                    <div>
+                      <div>Developer / Debug Mode</div>
+                      <div class="text-[10px] text-slate-500 font-mono">-log -debug</div>
+                    </div>
+                  </button>
+
+                  <div class="h-px bg-dark-600/50 my-1"></div>
+
+                  <button
+                    type="button"
+                    class="w-full px-3 py-2.5 rounded-xl text-left hover:bg-dark-700/80 text-xs font-semibold text-purple-300 flex items-center gap-2.5 transition"
+                    on:click={() => {
+                      showPlayDropdown = false;
+                      showCustomLaunchModal = true;
+                    }}
+                  >
+                    <Sliders class="w-3.5 h-3.5 text-purple-400" />
+                    <div>
+                      <div>Custom Launch Options...</div>
+                      <div class="text-[10px] text-slate-500">Flags & argument history</div>
+                    </div>
+                  </button>
+                </div>
+              {/if}
+            </div>
           {/if}
         </div>
       </div>
@@ -294,6 +460,40 @@
       report={verificationReport}
       isLoading={isVerifying}
       onClose={() => (showVerifyModal = false)}
+    />
+  {/if}
+
+  <!-- Custom Launch Modal -->
+  {#if showCustomLaunchModal}
+    <CustomLaunchModal onClose={() => (showCustomLaunchModal = false)} />
+  {/if}
+
+  <!-- Game Config (config.ini) Modal -->
+  {#if showGameConfigModal}
+    <GameConfigModal onClose={() => (showGameConfigModal = false)} />
+  {/if}
+
+  <!-- Engine Switch Confirmation Modal -->
+  {#if showEngineConfirmModal}
+    <ConfirmModal
+      title="Switch Project Engine Version?"
+      message="Studio will create a safety backup of your runtime files in save/backups/ and migrate your project to {pendingEngineVersion}. Your characters and stages will not be affected."
+      confirmLabel="Switch Engine"
+      confirmVariant="primary"
+      onConfirm={confirmEngineSwitch}
+      onCancel={() => (showEngineConfirmModal = false)}
+    />
+  {/if}
+
+  <!-- Rollback Engine Confirmation Modal -->
+  {#if showRollbackModal}
+    <ConfirmModal
+      title="Rollback Engine Version?"
+      message="This will restore the previous engine runtime snapshot from save/backups/."
+      confirmLabel="Rollback"
+      confirmVariant="primary"
+      onConfirm={confirmRollback}
+      onCancel={() => (showRollbackModal = false)}
     />
   {/if}
 {/if}

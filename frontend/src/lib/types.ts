@@ -75,6 +75,24 @@ export interface CrashDiagnosticInfo {
   canRepair: boolean;
 }
 
+export interface ExistingGameInspection {
+  isValid: boolean;
+  detectedName: string;
+  characterCount: number;
+  stageCount: number;
+  hasSelectDef: boolean;
+  hasSystemDef: boolean;
+  hasConfigIni: boolean;
+  sourcePath: string;
+}
+
+export interface EngineBackupInfo {
+  id: string;
+  version: string;
+  timestamp: string;
+  path: string;
+}
+
 export interface ToastMessage {
   id: string;
   type: 'info' | 'success' | 'warning' | 'error';

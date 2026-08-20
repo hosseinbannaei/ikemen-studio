@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 )
 
@@ -149,3 +150,24 @@ func saveSettingsLocked(s *Settings) error {
 	cachedSettings = s
 	return nil
 }
+
+// RemoveRecentProject removes a project path from the recent projects list
+func RemoveRecentProject(projectDir string) error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	cfg, err := LoadSettings()
+	if err != nil {
+		return err
+	}
+
+	var updated []string
+	for _, p := range cfg.RecentProjects {
+		if !strings.EqualFold(p, projectDir) {
+			updated = append(updated, p)
+		}
+	}
+	cfg.RecentProjects = updated
+	return saveSettingsLocked(cfg)
+}
+

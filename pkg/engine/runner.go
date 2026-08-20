@@ -52,8 +52,8 @@ func (c *circularBuffer) String() string {
 	return c.buf.String()
 }
 
-// Launch starts the engine executable with projectDir as current working directory and captures logs
-func (pm *ProcessManager) Launch(executablePath, projectDir string, onExit func(err error, userTerminated bool, outputTail string, logFilePath string)) error {
+// Launch starts the engine executable with projectDir as current working directory, optional custom args, and captures logs
+func (pm *ProcessManager) Launch(executablePath, projectDir string, args []string, onExit func(err error, userTerminated bool, outputTail string, logFilePath string)) error {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 
@@ -86,7 +86,7 @@ func (pm *ProcessManager) Launch(executablePath, projectDir string, onExit func(
 	var stderrWriter io.Writer = os.Stderr
 
 	if logFile != nil {
-		header := fmt.Sprintf("=== Ikemen GO Session Log - %s ===\nExecutable: %s\nProject: %s\n\n", time.Now().Format(time.RFC3339), executablePath, projectDir)
+		header := fmt.Sprintf("=== Ikemen GO Session Log - %s ===\nExecutable: %s\nProject: %s\nArgs: %v\n\n", time.Now().Format(time.RFC3339), executablePath, projectDir, args)
 		_, _ = logFile.WriteString(header)
 		stdoutWriter = io.MultiWriter(os.Stdout, logFile, recentOut)
 		stderrWriter = io.MultiWriter(os.Stderr, logFile, recentOut)
@@ -95,7 +95,7 @@ func (pm *ProcessManager) Launch(executablePath, projectDir string, onExit func(
 		stderrWriter = io.MultiWriter(os.Stderr, recentOut)
 	}
 
-	cmd := exec.Command(executablePath)
+	cmd := exec.Command(executablePath, args...)
 	cmd.Dir = projectDir
 	cmd.Stdout = stdoutWriter
 	cmd.Stderr = stderrWriter

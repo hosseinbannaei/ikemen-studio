@@ -14,12 +14,24 @@ export function DeleteEngine(arg1) {
   return window['go']['main']['App']['DeleteEngine'](arg1);
 }
 
+export function DetectExistingGame(arg1) {
+  return window['go']['main']['App']['DetectExistingGame'](arg1);
+}
+
 export function DownloadEngine(arg1) {
   return window['go']['main']['App']['DownloadEngine'](arg1);
 }
 
 export function FetchAvailableEngines() {
   return window['go']['main']['App']['FetchAvailableEngines']();
+}
+
+export function GetEngineBackups(arg1) {
+  return window['go']['main']['App']['GetEngineBackups'](arg1);
+}
+
+export function GetGameConfig(arg1) {
+  return window['go']['main']['App']['GetGameConfig'](arg1);
 }
 
 export function GetInstalledEngines() {
@@ -34,12 +46,20 @@ export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
 }
 
+export function ImportExistingGame(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['ImportExistingGame'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function IsProjectRunning(arg1) {
   return window['go']['main']['App']['IsProjectRunning'](arg1);
 }
 
 export function LaunchProject(arg1) {
   return window['go']['main']['App']['LaunchProject'](arg1);
+}
+
+export function LaunchProjectWithOptions(arg1, arg2) {
+  return window['go']['main']['App']['LaunchProjectWithOptions'](arg1, arg2);
 }
 
 export function OpenFolderInExplorer(arg1) {
@@ -54,6 +74,18 @@ export function OpenProjectLogsFolder(arg1) {
   return window['go']['main']['App']['OpenProjectLogsFolder'](arg1);
 }
 
+export function RemoveRecentProject(arg1) {
+  return window['go']['main']['App']['RemoveRecentProject'](arg1);
+}
+
+export function RollbackProjectEngine(arg1, arg2) {
+  return window['go']['main']['App']['RollbackProjectEngine'](arg1, arg2);
+}
+
+export function SaveGameConfig(arg1, arg2) {
+  return window['go']['main']['App']['SaveGameConfig'](arg1, arg2);
+}
+
 export function SelectDirectoryDialog(arg1) {
   return window['go']['main']['App']['SelectDirectoryDialog'](arg1);
 }
@@ -64,6 +96,10 @@ export function SelectProjectDirectoryDialog() {
 
 export function StopProject(arg1) {
   return window['go']['main']['App']['StopProject'](arg1);
+}
+
+export function SwitchProjectEngine(arg1, arg2) {
+  return window['go']['main']['App']['SwitchProjectEngine'](arg1, arg2);
 }
 
 export function UpdateSettings(arg1) {

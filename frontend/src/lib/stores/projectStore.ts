@@ -1,16 +1,32 @@
 import { writable } from 'svelte/store';
-import type { ProjectManifest, GameState, VerificationReport, CrashDiagnosticInfo } from '../types';
+import type {
+  ProjectManifest,
+  GameState,
+  VerificationReport,
+  CrashDiagnosticInfo,
+  ExistingGameInspection,
+  EngineBackupInfo,
+} from '../types';
 import {
   CreateProject,
   OpenProject,
   GetRecentProjects,
   SelectProjectDirectoryDialog,
   LaunchProject,
+  LaunchProjectWithOptions,
   StopProject,
   IsProjectRunning,
   OpenFolderInExplorer,
   VerifyAndRepairProject,
   OpenProjectLogsFolder,
+  DetectExistingGame,
+  ImportExistingGame,
+  SwitchProjectEngine,
+  GetEngineBackups,
+  RollbackProjectEngine,
+  GetGameConfig,
+  SaveGameConfig,
+  RemoveRecentProject,
 } from '../../../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
 import { toastStore } from './toastStore';
@@ -24,6 +40,7 @@ interface ProjectState {
   loading: boolean;
   isVerifying: boolean;
   activeCrash: CrashDiagnosticInfo | null;
+  backups: EngineBackupInfo[];
 }
 
 let eventsInitialized = false;
@@ -39,6 +56,7 @@ function createProjectStore() {
     loading: false,
     isVerifying: false,
     activeCrash: null,
+    backups: [],
   });
 
   function initEvents() {
@@ -108,6 +126,24 @@ function createProjectStore() {
     }
   }
 
+  async function loadBackups(projectDir?: string) {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return;
+
+    try {
+      const backups = await GetEngineBackups(targetPath);
+      update((s) => ({ ...s, backups: (backups as any) || [] }));
+    } catch (e) {
+      console.error('Failed to load engine backups:', e);
+    }
+  }
+
   async function create(name: string, targetDir: string, engineVersion: string, author: string): Promise<boolean> {
     initEvents();
     update((s) => ({ ...s, loading: true }));
@@ -116,6 +152,7 @@ function createProjectStore() {
       update((s) => ({ ...s, current: manifest as any, loading: false }));
       toastStore.success('Project Created', `Successfully initialized ${name}`);
       await loadRecent();
+      await loadBackups(manifest.path);
       return true;
     } catch (err: any) {
       console.error('Project creation failed:', err);
@@ -141,6 +178,7 @@ function createProjectStore() {
       }));
       toastStore.success('Project Opened', manifest.name);
       await loadRecent();
+      await loadBackups(projectDir);
       return true;
     } catch (err: any) {
       console.error('Failed to open project:', err);
@@ -150,24 +188,90 @@ function createProjectStore() {
     }
   }
 
-  async function selectAndOpen(): Promise<boolean> {
+  async function checkRawGame(dir: string): Promise<ExistingGameInspection | null> {
     try {
-      const dir = await SelectProjectDirectoryDialog();
-      if (dir) {
-        return await open(dir);
-      }
-      return false;
+      const inspection = await DetectExistingGame(dir);
+      return inspection as any;
+    } catch {
+      return null;
+    }
+  }
+
+  async function importExisting(
+    srcDir: string,
+    targetDir: string,
+    name: string,
+    engineVersion: string,
+    author: string
+  ): Promise<boolean> {
+    initEvents();
+    update((s) => ({ ...s, loading: true }));
+    try {
+      const manifest = await ImportExistingGame(srcDir, targetDir, name, engineVersion, author);
+      update((s) => ({ ...s, current: manifest as any, loading: false }));
+      toastStore.success('Game Imported', `Successfully imported ${manifest.name}`);
+      await loadRecent();
+      await loadBackups(manifest.path);
+      return true;
     } catch (err: any) {
-      toastStore.error('Dialog Error', err?.message || 'Failed to select directory');
+      console.error('Import failed:', err);
+      toastStore.error('Import Failed', err?.message || 'Could not import game');
+      update((s) => ({ ...s, loading: false }));
       return false;
     }
   }
 
+  async function removeRecent(projectDir: string): Promise<void> {
+    try {
+      await RemoveRecentProject(projectDir);
+      toastStore.info('Removed from Recent', 'Project removed from workspace list');
+      await loadRecent();
+    } catch (err: any) {
+      toastStore.error('Removal Error', err?.message || 'Could not remove project from recent list');
+    }
+  }
+
+  async function selectAndOpen(): Promise<{ opened: boolean; inspection?: ExistingGameInspection; selectedPath?: string }> {
+    try {
+      const dir = await SelectProjectDirectoryDialog();
+      if (!dir) return { opened: false };
+
+      try {
+        const ok = await open(dir);
+        if (ok) return { opened: true };
+      } catch {}
+
+      // If manifest open failed, check if it is a raw game folder to import
+      const inspection = await checkRawGame(dir);
+      if (inspection && inspection.isValid) {
+        return { opened: false, inspection, selectedPath: dir };
+      }
+
+      toastStore.warning('No Project Found', 'Folder does not contain a valid Ikemen project or assets');
+      return { opened: false };
+    } catch (err: any) {
+      toastStore.error('Dialog Error', err?.message || 'Failed to select directory');
+      return { opened: false };
+    }
+  }
+
   function close() {
-    update((s) => ({ ...s, current: null, isRunning: false, gameState: 'idle', canStop: false, activeCrash: null }));
+    update((s) => ({
+      ...s,
+      current: null,
+      isRunning: false,
+      gameState: 'idle',
+      canStop: false,
+      activeCrash: null,
+      backups: [],
+    }));
   }
 
   async function launch(): Promise<void> {
+    await launchWithOptions([]);
+  }
+
+  async function launchWithOptions(args: string[] = []): Promise<void> {
     initEvents();
     let currentPath = '';
     update((s) => {
@@ -188,7 +292,7 @@ function createProjectStore() {
     }
 
     try {
-      await LaunchProject(currentPath);
+      await LaunchProjectWithOptions(currentPath, args);
       setTimeout(() => {
         update((s) => {
           if (s.gameState === 'starting') {
@@ -239,6 +343,84 @@ function createProjectStore() {
       await OpenFolderInExplorer(fullPath);
     } catch (err: any) {
       toastStore.error('Explorer Error', err?.message || 'Could not open folder in file manager');
+    }
+  }
+
+  async function switchEngine(newVersion: string): Promise<boolean> {
+    let currentPath = '';
+    update((s) => {
+      currentPath = s.current?.path || '';
+      return s;
+    });
+
+    if (!currentPath) return false;
+
+    try {
+      await SwitchProjectEngine(currentPath, newVersion);
+      // Reload project
+      await open(currentPath);
+      toastStore.success('Engine Switched', `Project updated to ${newVersion} with safety backup`);
+      return true;
+    } catch (err: any) {
+      toastStore.error('Switch Failed', err?.message || 'Could not switch engine');
+      return false;
+    }
+  }
+
+  async function rollbackEngine(backupId: string): Promise<boolean> {
+    let currentPath = '';
+    update((s) => {
+      currentPath = s.current?.path || '';
+      return s;
+    });
+
+    if (!currentPath) return false;
+
+    try {
+      await RollbackProjectEngine(currentPath, backupId);
+      await open(currentPath);
+      toastStore.success('Engine Rolled Back', 'Successfully restored previous engine runtime');
+      return true;
+    } catch (err: any) {
+      toastStore.error('Rollback Failed', err?.message || 'Could not rollback engine');
+      return false;
+    }
+  }
+
+  async function getGameConfig(): Promise<Record<string, string> | null> {
+    let currentPath = '';
+    update((s) => {
+      currentPath = s.current?.path || '';
+      return s;
+    });
+
+    if (!currentPath) return null;
+
+    try {
+      const cfg = await GetGameConfig(currentPath);
+      return (cfg as any) || null;
+    } catch (err) {
+      console.error('Failed to get game config:', err);
+      return null;
+    }
+  }
+
+  async function saveGameConfig(updates: Record<string, string>): Promise<boolean> {
+    let currentPath = '';
+    update((s) => {
+      currentPath = s.current?.path || '';
+      return s;
+    });
+
+    if (!currentPath) return false;
+
+    try {
+      await SaveGameConfig(currentPath, updates);
+      toastStore.success('Settings Saved', 'Updated save/config.ini');
+      return true;
+    } catch (err: any) {
+      toastStore.error('Save Failed', err?.message || 'Failed to update config.ini');
+      return false;
     }
   }
 
@@ -305,13 +487,22 @@ function createProjectStore() {
     subscribe,
     initEvents,
     loadRecent,
+    loadBackups,
     create,
     open,
+    checkRawGame,
+    importExisting,
+    removeRecent,
     selectAndOpen,
     close,
     launch,
+    launchWithOptions,
     stop,
     openFolder,
+    switchEngine,
+    rollbackEngine,
+    getGameConfig,
+    saveGameConfig,
     verifyAndRepair,
     openLogs,
     dismissCrash,
