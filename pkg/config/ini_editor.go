@@ -25,7 +25,7 @@ func LoadGameConfig(projectDir string) (map[string]string, error) {
 			"VolumeBgm":    "80",
 			"VolumeSfx":    "80",
 			"Vsync":        "1",
-			"Renderer":     "0",
+			"RenderMode":   "OpenGL 3.3",
 		}, nil
 	}
 

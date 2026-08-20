@@ -215,15 +215,18 @@ func SyncProjectAssets(opts AssetSyncOptions) (*VerificationReport, error) {
 
 	// 1. Sync Stock Characters if requested
 	if opts.SyncStockChars {
-		stockChars := []string{"kfm", "kfm_zss", "randomselect"}
-		for _, sc := range stockChars {
-			src := filepath.Join(opts.EngineDir, "chars", sc)
-			dest := filepath.Join(opts.ProjectDir, "chars", sc)
-			if fi, err := os.Stat(src); err == nil && fi.IsDir() {
-				_ = copyDirRecursive(src, dest)
-				report.RepairedCount++
-				report.RepairedFiles = append(report.RepairedFiles, fmt.Sprintf("chars/%s", sc))
-				logLines = append(logLines, fmt.Sprintf("[SYNCED-CHAR]   chars/%s", sc))
+		engineCharsDir := filepath.Join(opts.EngineDir, "chars")
+		if entries, err := os.ReadDir(engineCharsDir); err == nil {
+			for _, entry := range entries {
+				if entry.IsDir() {
+					sc := entry.Name()
+					src := filepath.Join(engineCharsDir, sc)
+					dest := filepath.Join(opts.ProjectDir, "chars", sc)
+					_ = copyDirRecursive(src, dest)
+					report.RepairedCount++
+					report.RepairedFiles = append(report.RepairedFiles, fmt.Sprintf("chars/%s", sc))
+					logLines = append(logLines, fmt.Sprintf("[SYNCED-CHAR]   chars/%s", sc))
+				}
 			}
 		}
 	}

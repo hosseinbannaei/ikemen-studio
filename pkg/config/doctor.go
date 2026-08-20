@@ -19,11 +19,11 @@ type ConfigIssue struct {
 
 // ConfigInspectionResult details findings from analyzing project save/config.ini
 type ConfigInspectionResult struct {
-	IsValid            bool          `json:"isValid"`
-	HasLegacyRenderMode bool         `json:"hasLegacyRenderMode"`
-	Issues             []ConfigIssue `json:"issues"`
-	TotalKeys          int           `json:"totalKeys"`
-	ConfigPath         string        `json:"configPath"`
+	IsValid             bool          `json:"isValid"`
+	HasLegacyRenderMode bool          `json:"hasLegacyRenderMode"`
+	Issues              []ConfigIssue `json:"issues"`
+	TotalKeys           int           `json:"totalKeys"`
+	ConfigPath          string        `json:"configPath"`
 }
 
 // InspectGameConfig analyzes save/config.ini and identifies obsolete, invalid, or crashing parameters
@@ -50,22 +50,34 @@ func InspectGameConfig(projectDir, engineDir string) (*ConfigInspectionResult, e
 
 	result.TotalKeys = len(cfg)
 
-	// 1. Validate Renderer / RenderMode
-	for _, rKey := range []string{"Renderer", "renderer", "RenderMode", "rendermode"} {
+	// 1. Validate RenderMode (Valid desktop values: "OpenGL 3.3" or "Vulkan 1.3")
+	renderModeFound := false
+	for _, rKey := range []string{"RenderMode", "rendermode"} {
 		if val, ok := cfg[rKey]; ok {
-			valLower := strings.ToLower(val)
-			if strings.Contains(valLower, "3.2") || strings.Contains(valLower, "directx") || val == "-1" || (!isNumeric(val) && val != "0" && val != "1" && val != "2") {
+			renderModeFound = true
+			valTrimmed := strings.Trim(val, `"' `)
+			if !strings.EqualFold(valTrimmed, "OpenGL 3.3") && !strings.EqualFold(valTrimmed, "Vulkan 1.3") {
 				result.IsValid = false
 				result.HasLegacyRenderMode = true
 				result.Issues = append(result.Issues, ConfigIssue{
 					Key:            rKey,
 					CurrentValue:   val,
-					SuggestedValue: "0",
+					SuggestedValue: "OpenGL 3.3",
 					Severity:       "error",
-					Description:    "Unsupported legacy RenderMode causes OpenGL initialization errors. Recommended: 0 (OpenGL 3.3 Core).",
+					Description:    "Invalid RenderMode causes graphics initialization warning or crash. Recommended: OpenGL 3.3.",
 				})
 			}
 		}
+	}
+
+	if !renderModeFound {
+		result.Issues = append(result.Issues, ConfigIssue{
+			Key:            "RenderMode",
+			CurrentValue:   "(missing)",
+			SuggestedValue: "OpenGL 3.3",
+			Severity:       "warning",
+			Description:    "RenderMode is not explicitly configured in save/config.ini.",
+		})
 	}
 
 	// 2. Validate Width & Height
@@ -144,8 +156,8 @@ func RepairGameConfig(projectDir, engineDir string) error {
 		updates[issue.Key] = issue.SuggestedValue
 	}
 
-	// Always ensure valid default renderer
-	updates["Renderer"] = "0"
+	// Always ensure valid desktop RenderMode
+	updates["RenderMode"] = "OpenGL 3.3"
 
 	return SaveGameConfig(projectDir, updates)
 }
@@ -174,20 +186,17 @@ func ResetGameConfig(projectDir, engineDir string) error {
 
 	// Standard clean default configuration
 	defaultConfigContent := `; Ikemen GO Studio Default Configuration
-[Config]
+[Video]
+RenderMode = OpenGL 3.3
 Width = 1280
 Height = 720
 Fullscreen = 0
 Vsync = 1
-Renderer = 0
+
+[Audio]
 VolumeMaster = 80
 VolumeBgm = 80
 VolumeSfx = 80
 `
 	return os.WriteFile(destPath, []byte(defaultConfigContent), 0644)
-}
-
-func isNumeric(s string) bool {
-	_, err := strconv.Atoi(s)
-	return err == nil
 }

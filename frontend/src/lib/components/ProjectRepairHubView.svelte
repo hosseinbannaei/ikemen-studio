@@ -27,6 +27,7 @@
     RefreshCw,
     X,
     Cpu,
+    Zap,
   } from 'lucide-svelte';
 
   export let onBackToWorkspace: () => void;
@@ -43,6 +44,7 @@
   let loadingDiff = false;
   let syncingAssets = false;
   let lastSyncReport: VerificationReport | null = null;
+  let allFixedSuccess = false;
 
   let syncStockChars = true;
   let syncStockStages = false;
@@ -117,10 +119,22 @@
     await refreshAll();
   }
 
-  async function handleRunStandardVerify() {
-    const report = await projectStore.verifyAndRepair();
-    lastSyncReport = report;
-    await loadLogsViewer();
+  async function handleOneClickFixAll() {
+    if (!$projectStore.current) return;
+    syncingAssets = true;
+    lastSyncReport = await projectStore.syncAssets({
+      projectDir: $projectStore.current.path,
+      syncStockChars: true,
+      syncStockStages: false,
+      syncScreenpack: true,
+      syncFonts: false,
+      syncRuntime: true,
+      resetConfig: true,
+    });
+    await projectStore.repairConfig();
+    syncingAssets = false;
+    allFixedSuccess = true;
+    await refreshAll();
   }
 
   function handleRelaunch() {
@@ -131,7 +145,7 @@
 
 <div class="p-8 max-w-6xl mx-auto space-y-6">
   <!-- Top Hub Banner -->
-  <div class="p-6 rounded-2xl bg-dark-800 border border-dark-600/70 shadow-lg relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+  <div class="p-6 rounded-2xl bg-dark-800 border border-dark-600 shadow-lg relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
     <div class="space-y-2">
       <div class="flex items-center gap-3 flex-wrap">
         <button
@@ -167,11 +181,17 @@
     <div class="flex items-center gap-2.5">
       <button
         type="button"
-        class="px-4 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600 text-slate-200 text-xs font-semibold flex items-center gap-2 transition shadow-sm"
-        on:click={refreshAll}
+        disabled={syncingAssets}
+        class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-bold shadow-md flex items-center gap-2 transition"
+        on:click={handleOneClickFixAll}
       >
-        <RefreshCw class="w-4 h-4 text-indigo-400 {loadingConfig || loadingDiff ? 'animate-spin' : ''}" />
-        <span>Refresh</span>
+        {#if syncingAssets}
+          <Loader2 class="w-4 h-4 animate-spin" />
+          <span>Fixing All...</span>
+        {:else}
+          <Zap class="w-4 h-4" />
+          <span>1-Click Fix All Issues</span>
+        {/if}
       </button>
 
       <button
@@ -185,8 +205,28 @@
     </div>
   </div>
 
+  {#if allFixedSuccess}
+    <div class="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 flex items-center justify-between gap-4 animate-in fade-in duration-200">
+      <div class="flex items-center gap-3">
+        <CheckCircle2 class="w-5 h-5 text-emerald-400 flex-shrink-0" />
+        <div class="text-xs">
+          <span class="font-bold text-slate-100">All known issues resolved successfully!</span>
+          <p class="text-slate-300 mt-0.5">Stock characters updated to modern ZSS syntax, RenderMode set to OpenGL 3.3, and core scripts synchronized.</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition"
+        on:click={handleRelaunch}
+      >
+        <Play class="w-3.5 h-3.5 fill-current" />
+        <span>Launch Game Now</span>
+      </button>
+    </div>
+  {/if}
+
   <!-- Navigation Tabs -->
-  <div class="flex items-center gap-3 border-b border-dark-600/60 pb-3">
+  <div class="flex items-center gap-3 border-b border-dark-600 pb-3">
     <button
       type="button"
       class="pb-2 text-xs font-bold tracking-wide border-b-2 transition flex items-center gap-2 {
@@ -246,7 +286,7 @@
               <CheckCircle2 class="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
               <div>
                 <h3 class="text-sm font-bold text-slate-100">Configuration is Valid & Compatible</h3>
-                <p class="text-xs text-slate-400 mt-0.5">Your save/config.ini parameters match modern Ikemen GO engine requirements.</p>
+                <p class="text-xs text-slate-400 mt-0.5">Your save/config.ini parameters match modern Ikemen GO engine requirements (RenderMode = OpenGL 3.3).</p>
               </div>
             {:else}
               <AlertTriangle class="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
@@ -270,7 +310,7 @@
                 <span>Fixing...</span>
               {:else}
                 <Wrench class="w-3.5 h-3.5" />
-                <span>Auto-Fix Incompatible Keys</span>
+                <span>Auto-Fix Config (OpenGL 3.3)</span>
               {/if}
             </button>
 
@@ -289,11 +329,11 @@
 
         <!-- Detected Issues List -->
         {#if configInspection && configInspection.issues.length > 0}
-          <div class="pt-3 border-t border-dark-600/40 space-y-2">
+          <div class="pt-3 border-t border-dark-600 space-y-2">
             <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Identified Parameter Issues:</div>
             <div class="space-y-1.5">
               {#each configInspection.issues as issue}
-                <div class="p-3 rounded-xl bg-dark-900 border border-dark-600/60 flex items-start justify-between gap-3 text-xs">
+                <div class="p-3 rounded-xl bg-dark-900 border border-dark-600 flex items-start justify-between gap-3 text-xs">
                   <div class="space-y-0.5">
                     <div class="font-mono font-bold text-rose-300">
                       {issue.key} = <span class="line-through opacity-70">{issue.currentValue}</span> &rarr; <span class="text-emerald-400">{issue.suggestedValue}</span>
@@ -329,7 +369,7 @@
       </div>
 
       <!-- Component Replacement Options -->
-      <div class="p-6 rounded-2xl bg-dark-800 border border-dark-600/70 space-y-4 shadow-sm">
+      <div class="p-6 rounded-2xl bg-dark-800 border border-dark-600 space-y-4 shadow-sm">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Select Components to Synchronize & Replace</span>
           <button
@@ -350,7 +390,7 @@
 
         <div class="space-y-3">
           <!-- 1. Stock Characters -->
-          <label class="p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition {syncStockChars ? 'bg-dark-900 border-indigo-500/60 ring-1 ring-indigo-500/20' : 'bg-dark-900/60 border-dark-600/60'}">
+          <label class="p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition {syncStockChars ? 'bg-dark-900 border-indigo-500/60 ring-1 ring-indigo-500/20' : 'bg-dark-900 border-dark-600'}">
             <input type="checkbox" bind:checked={syncStockChars} class="rounded border-dark-600 bg-dark-800 text-indigo-600 mt-1" />
             <div class="space-y-1 flex-1">
               <div class="flex items-center justify-between">
@@ -362,7 +402,7 @@
           </label>
 
           <!-- 2. Screenpack & System Scripts -->
-          <label class="p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition {syncScreenpack ? 'bg-dark-900 border-indigo-500/60 ring-1 ring-indigo-500/20' : 'bg-dark-900/60 border-dark-600/60'}">
+          <label class="p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition {syncScreenpack ? 'bg-dark-900 border-indigo-500/60 ring-1 ring-indigo-500/20' : 'bg-dark-900 border-dark-600'}">
             <input type="checkbox" bind:checked={syncScreenpack} class="rounded border-dark-600 bg-dark-800 text-indigo-600 mt-1" />
             <div class="space-y-1 flex-1">
               <div class="flex items-center justify-between">
@@ -374,7 +414,7 @@
           </label>
 
           <!-- 3. Engine Core Lua Runtime -->
-          <label class="p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition {syncRuntime ? 'bg-dark-900 border-indigo-500/60 ring-1 ring-indigo-500/20' : 'bg-dark-900/60 border-dark-600/60'}">
+          <label class="p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition {syncRuntime ? 'bg-dark-900 border-indigo-500/60 ring-1 ring-indigo-500/20' : 'bg-dark-900 border-dark-600'}">
             <input type="checkbox" bind:checked={syncRuntime} class="rounded border-dark-600 bg-dark-800 text-indigo-600 mt-1" />
             <div class="space-y-1 flex-1">
               <span class="text-xs font-bold text-slate-100">Engine Lua VM & Shaders (external/ & lib/)</span>
@@ -383,7 +423,7 @@
           </label>
 
           <!-- 4. Default Stages -->
-          <label class="p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition {syncStockStages ? 'bg-dark-900 border-indigo-500/60 ring-1 ring-indigo-500/20' : 'bg-dark-900/60 border-dark-600/60'}">
+          <label class="p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition {syncStockStages ? 'bg-dark-900 border-indigo-500/60 ring-1 ring-indigo-500/20' : 'bg-dark-900 border-dark-600'}">
             <input type="checkbox" bind:checked={syncStockStages} class="rounded border-dark-600 bg-dark-800 text-indigo-600 mt-1" />
             <div class="space-y-1 flex-1">
               <span class="text-xs font-bold text-slate-100">Default Stages (stages/stage0.def)</span>
@@ -392,7 +432,7 @@
           </label>
 
           <!-- 5. System Fonts -->
-          <label class="p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition {syncFonts ? 'bg-dark-900 border-indigo-500/60 ring-1 ring-indigo-500/20' : 'bg-dark-900/60 border-dark-600/60'}">
+          <label class="p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition {syncFonts ? 'bg-dark-900 border-indigo-500/60 ring-1 ring-indigo-500/20' : 'bg-dark-900 border-dark-600'}">
             <input type="checkbox" bind:checked={syncFonts} class="rounded border-dark-600 bg-dark-800 text-indigo-600 mt-1" />
             <div class="space-y-1 flex-1">
               <span class="text-xs font-bold text-slate-100">Engine Fonts (font/)</span>
@@ -401,10 +441,10 @@
           </label>
 
           <!-- 6. Reset Config -->
-          <label class="p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition {syncResetConfig ? 'bg-dark-900 border-indigo-500/60 ring-1 ring-indigo-500/20' : 'bg-dark-900/60 border-dark-600/60'}">
+          <label class="p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition {syncResetConfig ? 'bg-dark-900 border-indigo-500/60 ring-1 ring-indigo-500/20' : 'bg-dark-900 border-dark-600'}">
             <input type="checkbox" bind:checked={syncResetConfig} class="rounded border-dark-600 bg-dark-800 text-indigo-600 mt-1" />
             <div class="space-y-1 flex-1">
-              <span class="text-xs font-bold text-slate-100">Reset save/config.ini to Clean Engine Defaults</span>
+              <span class="text-xs font-bold text-slate-100">Reset save/config.ini to Clean Engine Defaults (OpenGL 3.3)</span>
               <p class="text-[11px] text-slate-400">Eliminates legacy render mode syntax and corrupted display resolutions.</p>
             </div>
           </label>
@@ -415,7 +455,7 @@
   <!-- TAB 3: Audit & Crash Logs -->
   {:else if activeTab === 'logs'}
     <div class="space-y-6 animate-in fade-in duration-150">
-      <div class="p-6 rounded-2xl bg-dark-800 border border-dark-600/70 space-y-4 shadow-sm">
+      <div class="p-6 rounded-2xl bg-dark-800 border border-dark-600 space-y-4 shadow-sm">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <FileText class="w-4 h-4 text-purple-400" />
@@ -443,7 +483,7 @@
           </div>
         </div>
 
-        <div class="p-4 rounded-xl bg-dark-900 border border-dark-600/60 font-mono text-xs text-slate-300 whitespace-pre-wrap max-h-96 overflow-y-auto leading-relaxed shadow-inner">
+        <div class="p-4 rounded-xl bg-dark-900 border border-dark-600 font-mono text-xs text-slate-300 whitespace-pre-wrap max-h-96 overflow-y-auto leading-relaxed shadow-inner">
           {logContent}
         </div>
       </div>

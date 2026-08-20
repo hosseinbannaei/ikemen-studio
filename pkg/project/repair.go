@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"ikemen-studio/pkg/config"
 )
 
 // VerificationReport details the results of verifying and repairing project assets
@@ -26,7 +28,7 @@ func VerifyAndRepairProject(engineDir, projectDir string) (*VerificationReport, 
 }
 
 // VerifyAndRepairProjectWithMode compares project files against engine runtime assets
-// If updateCoreSystem is true, it also updates core system data scripts (common1.cns.zss, etc.) from the engine
+// If updateCoreSystem is true, it updates core system data scripts and stock characters
 func VerifyAndRepairProjectWithMode(engineDir, projectDir string, updateCoreSystem bool) (*VerificationReport, error) {
 	if projectDir == "" {
 		return nil, fmt.Errorf("project directory cannot be empty")
@@ -93,7 +95,7 @@ func VerifyAndRepairProjectWithMode(engineDir, projectDir string, updateCoreSyst
 
 			normalizedRel := filepath.ToSlash(relPath)
 
-			// Never overwrite select.def or custom chars/stages
+			// Never overwrite select.def
 			if normalizedRel == "data/select.def" {
 				return nil
 			}
@@ -103,7 +105,10 @@ func VerifyAndRepairProjectWithMode(engineDir, projectDir string, updateCoreSyst
 
 			targetInfo, statErr := os.Stat(targetFile)
 			isMissing := os.IsNotExist(statErr) || (statErr == nil && targetInfo.Size() == 0 && info.Size() > 0)
-			isCoreSystemScript := updateCoreSystem && (strings.HasPrefix(normalizedRel, "external/") || coreSystemFiles[normalizedRel])
+			
+			// Stock characters that must be updated to avoid ZSS syntax panics
+			isStockChar := strings.HasPrefix(normalizedRel, "chars/kfm") || strings.HasPrefix(normalizedRel, "chars/randomselect")
+			isCoreSystemScript := updateCoreSystem && (strings.HasPrefix(normalizedRel, "external/") || coreSystemFiles[normalizedRel] || isStockChar)
 
 			if isMissing || isCoreSystemScript {
 				if isMissing {
@@ -129,6 +134,11 @@ func VerifyAndRepairProjectWithMode(engineDir, projectDir string, updateCoreSyst
 
 			return nil
 		})
+	}
+
+	// Always ensure config.ini has valid RenderMode
+	if err := config.RepairGameConfig(projectDir, engineDir); err == nil {
+		logLines = append(logLines, "[NORMALIZED-CFG] save/config.ini RenderMode set to OpenGL 3.3")
 	}
 
 	logLines = append(logLines, "--------------------------------------------------------")

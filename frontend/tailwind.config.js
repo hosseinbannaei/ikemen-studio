@@ -9,12 +9,12 @@ export default {
     extend: {
       colors: {
         dark: {
-          900: 'var(--bg-app)',
-          850: 'var(--bg-sidebar)',
-          800: 'var(--bg-surface)',
-          750: 'var(--bg-hover)',
-          700: 'var(--bg-card)',
-          600: 'var(--bg-border)',
+          900: 'rgb(var(--bg-app-rgb) / <alpha-value>)',
+          850: 'rgb(var(--bg-sidebar-rgb) / <alpha-value>)',
+          800: 'rgb(var(--bg-surface-rgb) / <alpha-value>)',
+          750: 'rgb(var(--bg-hover-rgb) / <alpha-value>)',
+          700: 'rgb(var(--bg-card-rgb) / <alpha-value>)',
+          600: 'rgb(var(--bg-border-rgb) / <alpha-value>)',
         }
       }
     },

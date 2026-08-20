@@ -3,22 +3,22 @@
 @tailwind utilities;
 
 :root {
-  --bg-app: #0f1117;
-  --bg-sidebar: #13161f;
-  --bg-surface: #161922;
-  --bg-hover: #1f2430;
-  --bg-card: #1f2430;
-  --bg-border: #2b3242;
+  --bg-app-rgb: 15, 17, 23;        /* #0f1117 */
+  --bg-sidebar-rgb: 19, 22, 31;    /* #13161f */
+  --bg-surface-rgb: 22, 25, 34;    /* #161922 */
+  --bg-hover-rgb: 31, 36, 48;      /* #1f2430 */
+  --bg-card-rgb: 31, 36, 48;       /* #1f2430 */
+  --bg-border-rgb: 43, 50, 66;     /* #2b3242 */
   color-scheme: dark;
 }
 
 :root.light, html.light {
-  --bg-app: #f8fafc;
-  --bg-sidebar: #e2e8f0;
-  --bg-surface: #ffffff;
-  --bg-hover: #f1f5f9;
-  --bg-card: #ffffff;
-  --bg-border: #cbd5e1;
+  --bg-app-rgb: 248, 250, 252;     /* #f8fafc */
+  --bg-sidebar-rgb: 241, 245, 249; /* #f1f5f9 */
+  --bg-surface-rgb: 255, 255, 255; /* #ffffff */
+  --bg-hover-rgb: 241, 245, 249;   /* #f1f5f9 */
+  --bg-card-rgb: 255, 255, 255;    /* #ffffff */
+  --bg-border-rgb: 203, 213, 225;  /* #cbd5e1 */
   color-scheme: light;
 }
 
@@ -28,11 +28,11 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background-color: var(--bg-app);
+  background-color: rgb(var(--bg-app-rgb));
   color: #e2e8f0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   user-select: none;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 html.light, html.light body {
@@ -71,11 +71,11 @@ html.light .text-slate-500 {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-app);
+  background: rgb(var(--bg-app-rgb));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-border);
+  background: rgb(var(--bg-border-rgb));
   border-radius: 3px;
 }
 
