@@ -23,13 +23,19 @@ type DefInfo struct {
 	VersionDate   string
 	MugenVersion  string
 	IkemenVersion string
-	SpriteFile    string // Relative to .def file
-	SoundFile     string
+	SpriteFile    string // Relative to .def file, normalized with /
+	SoundFile     string // Relative to .def file, normalized with /
+	AnimFile      string // Relative to .def file, normalized with /
+	CmdFile       string // Relative to .def file, normalized with /
+	CnsFile       string // Relative to .def file, normalized with /
 	FoundURLs     []string
 	Comments      []string
 	IsStoryboard  bool // e.g. ending.def, intro.def (contains [SceneDef])
 	IsLifebar     bool // e.g. fight.def, lifebar.def (contains [Lifebar] or [Round])
+	IsFont        bool // e.g. font.def, name14.def (contains [Font] or .fnt)
+	IsCommand     bool // e.g. command.def (contains only [Command])
 	HasFilesBlock bool // true if [Files] section with cns/cmd/sprite exists
+	IsValidAsset  bool // true if verified as a valid character, stage, motif, or sound
 }
 
 // ParseDefFile reads and extracts metadata from a character, stage, lifebar, or motif .def file.
@@ -41,7 +47,6 @@ func ParseDefFile(defPath string) (*DefInfo, error) {
 	defer file.Close()
 
 	info := &DefInfo{
-		Category:  CategoryFighter,
 		FoundURLs: make([]string, 0),
 		Comments:  make([]string, 0),
 	}
@@ -53,10 +58,26 @@ func ParseDefFile(defPath string) (*DefInfo, error) {
 	hasLifebarInfo := false
 	hasSceneDef := false
 	hasFiles := false
+	hasCharInfo := false
+	hasFontInfo := false
+	hasCmdInfo := false
 
 	baseName := strings.ToLower(filepath.Base(defPath))
+	baseNoExt := strings.TrimSuffix(baseName, filepath.Ext(baseName))
+
+	// Preliminary name-based checks
 	if baseName == "fight.def" || baseName == "lifebar.def" {
 		hasLifebarInfo = true
+	}
+	if baseName == "intro.def" || baseName == "ending.def" || baseName == "credits.def" ||
+		baseName == "introduction.def" || baseName == "cutscene.def" || baseName == "logo.def" {
+		hasSceneDef = true
+	}
+	if strings.HasPrefix(baseName, "font") || strings.HasPrefix(baseName, "name14") || strings.HasPrefix(baseName, "f-") {
+		hasFontInfo = true
+	}
+	if baseName == "command.def" || baseName == "cmd.def" {
+		hasCmdInfo = true
 	}
 
 	for scanner.Scan() {
@@ -82,11 +103,20 @@ func ParseDefFile(defPath string) (*DefInfo, error) {
 		}
 
 		if match := sectionRegex.FindStringSubmatch(trimmed); len(match) > 1 {
-			currentSection = strings.ToLower(strings.TrimSpace(match[1]))
+			// Strip any trailing comments inside or after section bracket
+			rawSec := match[1]
+			if idx := strings.Index(rawSec, ";"); idx != -1 {
+				rawSec = rawSec[:idx]
+			}
+			if idx := strings.Index(rawSec, "#"); idx != -1 {
+				rawSec = rawSec[:idx]
+			}
+			currentSection = strings.ToLower(strings.TrimSpace(rawSec))
+
 			if strings.HasPrefix(currentSection, "stageinfo") || strings.HasPrefix(currentSection, "bgdef") {
 				hasStageInfo = true
 			}
-			if strings.HasPrefix(currentSection, "title info") || strings.HasPrefix(currentSection, "select info") {
+			if strings.HasPrefix(currentSection, "title info") || strings.HasPrefix(currentSection, "select info") || strings.HasPrefix(currentSection, "option info") {
 				hasTitleInfo = true
 			}
 			if strings.HasPrefix(currentSection, "lifebar") || strings.HasPrefix(currentSection, "simul lifebar") ||
@@ -99,6 +129,15 @@ func ParseDefFile(defPath string) (*DefInfo, error) {
 			}
 			if currentSection == "files" {
 				hasFiles = true
+			}
+			if currentSection == "info" {
+				hasCharInfo = true
+			}
+			if strings.HasPrefix(currentSection, "font") || strings.HasPrefix(currentSection, "def") {
+				hasFontInfo = true
+			}
+			if currentSection == "command" || currentSection == "statedef" {
+				hasCmdInfo = true
 			}
 			continue
 		}
@@ -127,9 +166,15 @@ func ParseDefFile(defPath string) (*DefInfo, error) {
 				hasFiles = true
 				switch rawKey {
 				case "sprite", "sff":
-					info.SpriteFile = val
+					info.SpriteFile = normalizeDefPath(val)
 				case "sound", "snd":
-					info.SoundFile = val
+					info.SoundFile = normalizeDefPath(val)
+				case "anim", "air":
+					info.AnimFile = normalizeDefPath(val)
+				case "cmd":
+					info.CmdFile = normalizeDefPath(val)
+				case "cns":
+					info.CnsFile = normalizeDefPath(val)
 				}
 			case "stageinfo", "bgdef":
 				if rawKey == "name" && info.Name == "" {
@@ -142,10 +187,10 @@ func ParseDefFile(defPath string) (*DefInfo, error) {
 					info.Author = val
 				}
 				if (rawKey == "spr" || rawKey == "sprite" || rawKey == "sff") && info.SpriteFile == "" {
-					info.SpriteFile = val
+					info.SpriteFile = normalizeDefPath(val)
 				}
 				if (rawKey == "bgmusic" || rawKey == "music") && info.SoundFile == "" {
-					info.SoundFile = val
+					info.SoundFile = normalizeDefPath(val)
 				}
 			}
 		}
@@ -153,21 +198,33 @@ func ParseDefFile(defPath string) (*DefInfo, error) {
 
 	info.IsStoryboard = hasSceneDef && !hasFiles && !hasStageInfo
 	info.IsLifebar = hasLifebarInfo
+	info.IsFont = hasFontInfo && !hasFiles && !hasStageInfo
+	info.IsCommand = hasCmdInfo && !hasFiles && !hasCharInfo && !hasStageInfo
 	info.HasFilesBlock = hasFiles
 
+	// Categorize asset
 	if hasStageInfo {
 		info.Category = CategoryStage
+		info.IsValidAsset = true
 	} else if hasTitleInfo || hasLifebarInfo {
 		info.Category = CategoryMotif
+		info.IsValidAsset = true
+	} else if info.IsStoryboard || info.IsFont || info.IsCommand {
+		info.IsValidAsset = false
+	} else if hasFiles || hasCharInfo || info.SpriteFile != "" || info.CmdFile != "" || info.CnsFile != "" {
+		info.Category = CategoryFighter
+		info.IsValidAsset = true
+	} else {
+		// Auxiliary / unknown .def
+		info.Category = CategoryFighter
+		info.IsValidAsset = (baseNoExt != "intro" && baseNoExt != "ending" && baseNoExt != "credits" && baseNoExt != "command")
 	}
 
 	if info.DisplayName == "" {
 		info.DisplayName = info.Name
 	}
 	if info.DisplayName == "" {
-		// Fallback to base name of the .def file
-		base := filepath.Base(defPath)
-		info.DisplayName = strings.TrimSuffix(base, filepath.Ext(base))
+		info.DisplayName = baseNoExt
 	}
 	if info.Author == "" {
 		info.Author = "Unknown"
@@ -227,10 +284,20 @@ func cleanDefValue(val string) string {
 	if idx := strings.Index(val, ";"); idx != -1 {
 		val = val[:idx]
 	}
+	if idx := strings.Index(val, "#"); idx != -1 {
+		val = val[:idx]
+	}
 	val = strings.TrimSpace(val)
-	// Strip surrounding double quotes
-	val = strings.Trim(val, "\"")
+	// Strip surrounding double or single quotes
+	val = strings.Trim(val, "\"'")
 	return strings.TrimSpace(val)
+}
+
+func normalizeDefPath(val string) string {
+	cleaned := cleanDefValue(val)
+	// Normalize Windows backslashes to forward slashes
+	cleaned = strings.ReplaceAll(cleaned, "\\", "/")
+	return filepath.Clean(cleaned)
 }
 
 func containsString(slice []string, item string) bool {
@@ -241,3 +308,4 @@ func containsString(slice []string, item string) bool {
 	}
 	return false
 }
+

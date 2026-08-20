@@ -8,6 +8,7 @@ import {
   GetVaultAssets,
   UpdateVaultAsset,
   DeleteVaultAsset,
+  CleanAndRepairVault,
   IngestAsset,
   IngestAssets,
   AddVaultAssetToProject,
@@ -201,7 +202,32 @@ function createVaultStore() {
     }
   }
 
+  async function cleanAndRepair(vaultId?: string) {
+    update((s) => ({ ...s, loading: true }));
+    try {
+      const target = vaultId || 'vault-default';
+      const rep: any = await CleanAndRepairVault(target);
+      const changes = (rep?.removed_duplicates || 0) + (rep?.cleaned_contaminations || 0) + (rep?.pruned_missing || 0);
+      if (changes > 0 || (rep?.regenerated_previews || 0) > 0) {
+        toastStore.success(
+          'Vault Cleaned & Repaired',
+          `Removed ${rep?.removed_duplicates || 0} duplicate(s), fixed ${rep?.cleaned_contaminations || 0} contaminated folder(s), refreshed ${rep?.regenerated_previews || 0} preview(s). Total: ${rep?.total_assets_now || 0} assets.`
+        );
+      } else {
+        toastStore.info('Vault Healthy', `Scan complete: ${rep?.total_assets_now || 0} assets verified with 0 issues.`);
+      }
+      await loadVaults();
+      await loadAssets(target);
+      return rep;
+    } catch (err: any) {
+      toastStore.error('Vault Clean Error', err?.message || 'Failed to clean vault');
+      update((s) => ({ ...s, loading: false }));
+      return null;
+    }
+  }
+
   async function ingest(filePath: string, vaultId: string, targetMode = 'auto'): Promise<IngestResult | null> {
+
     return ingestMultiple([filePath], vaultId, targetMode);
   }
 
@@ -320,6 +346,7 @@ function createVaultStore() {
     unregister,
     updateAsset,
     deleteAsset,
+    cleanAndRepair,
     ingest,
     ingestMultiple,
     linkToProject,

@@ -83,3 +83,15 @@ type IngestResult struct {
 	ImportedCount  int          `json:"imported_count"`
 	Warnings       []string     `json:"warnings"`
 }
+
+// VaultCleanReport details the outcome of a vault diagnostic and cleanup operation.
+type VaultCleanReport struct {
+	VaultID                string   `json:"vault_id"`
+	RemovedDuplicates      int      `json:"removed_duplicates"`
+	CleanedContaminations  int      `json:"cleaned_contaminations"`
+	RegeneratedPreviews    int      `json:"regenerated_previews"`
+	PrunedMissing          int      `json:"pruned_missing"`
+	TotalAssetsNow         int      `json:"total_assets_now"`
+	Details                []string `json:"details"`
+}
+

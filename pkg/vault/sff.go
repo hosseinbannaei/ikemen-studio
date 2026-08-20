@@ -32,21 +32,41 @@ func ExtractAndCachePortrait(vaultDir, assetKey, sffPath string) (relPath string
 	}
 
 	var img image.Image
+	assetDir := filepath.Join(vaultDir, assetKey)
 
 	// 1. Try SFF extraction
 	if sffPath != "" {
-		if fileImg, parseErr := ParseSFFPortrait(sffPath); parseErr == nil && fileImg != nil {
-			img = fileImg
+		sffClean := strings.ReplaceAll(sffPath, "\\", "/")
+		targetSff := sffClean
+		if !filepath.IsAbs(targetSff) {
+			targetSff = filepath.Join(assetDir, sffClean)
+		}
+		if _, statErr := os.Stat(targetSff); statErr != nil {
+			targetSff = ResolvePathCaseInsensitive(assetDir, sffClean)
+		}
+		if targetSff != "" {
+			if fileImg, parseErr := ParseSFFPortrait(targetSff); parseErr == nil && fileImg != nil {
+				img = fileImg
+			}
 		}
 	}
 
-	// 2. If SFF failed or not present, search character directory for loose portrait images
+	// 2. If SFF failed or not present, search character directory for any SFF file
 	if img == nil {
-		assetDir := filepath.Join(vaultDir, assetKey)
+		anySff := findFirstExt(assetDir, ".sff")
+		if anySff != "" {
+			if fileImg, parseErr := ParseSFFPortrait(anySff); parseErr == nil && fileImg != nil {
+				img = fileImg
+			}
+		}
+	}
+
+	// 3. If SFF failed, search character directory for loose portrait images
+	if img == nil {
 		img = findLooseImage(assetDir)
 	}
 
-	// 3. Fallback to procedural avatar if no image found
+	// 4. Fallback to procedural avatar if no image found
 	if img == nil {
 		img = generatePlaceholderAvatar(assetKey)
 	}
@@ -68,6 +88,43 @@ func ExtractAndCachePortrait(vaultDir, assetKey, sffPath string) (relPath string
 	return relPath, base64URI, nil
 }
 
+// ResolvePathCaseInsensitive traverses path components step by step to resolve case differences on Linux/macOS.
+func ResolvePathCaseInsensitive(baseDir, relPath string) string {
+	cleanRel := strings.ReplaceAll(relPath, "\\", "/")
+	parts := strings.Split(filepath.Clean(cleanRel), "/")
+
+	current := baseDir
+	for _, part := range parts {
+		if part == "" || part == "." {
+			continue
+		}
+		if part == ".." {
+			current = filepath.Dir(current)
+			continue
+		}
+
+		entries, err := os.ReadDir(current)
+		if err != nil {
+			return ""
+		}
+
+		found := false
+		lowerPart := strings.ToLower(part)
+		for _, e := range entries {
+			if strings.ToLower(e.Name()) == lowerPart {
+				current = filepath.Join(current, e.Name())
+				found = true
+				break
+			}
+		}
+		if !found {
+			return ""
+		}
+	}
+
+	return current
+}
+
 func findLooseImage(dir string) image.Image {
 	if _, err := os.Stat(dir); err != nil {
 		return nil
@@ -76,16 +133,18 @@ func findLooseImage(dir string) image.Image {
 	// Prioritized candidates
 	priorityNames := []string{"portrait.png", "big.png", "icon.png", "small.png", "preview.png", "face.png"}
 	for _, name := range priorityNames {
-		p := filepath.Join(dir, name)
-		if f, err := os.Open(p); err == nil {
-			defer f.Close()
-			if decoded, _, err := image.Decode(f); err == nil {
-				return decoded
+		p := ResolvePathCaseInsensitive(dir, name)
+		if p != "" {
+			if f, err := os.Open(p); err == nil {
+				defer f.Close()
+				if decoded, _, err := image.Decode(f); err == nil {
+					return decoded
+				}
 			}
 		}
 	}
 
-	// Any png in the directory
+	// Any png/jpg in the directory
 	var foundImg image.Image
 	_ = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err == nil && !info.IsDir() && foundImg == nil {
@@ -105,6 +164,7 @@ func findLooseImage(dir string) image.Image {
 
 	return foundImg
 }
+
 
 // ParseSFFPortrait parses an SFF file (v1 or v2) and extracts Sprite (9000,0) or (9000,1).
 func ParseSFFPortrait(sffPath string) (image.Image, error) {

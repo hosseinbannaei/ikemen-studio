@@ -658,6 +658,16 @@ func (a *App) DeleteVaultAsset(vaultID, assetKey string) error {
 	return a.vaultManager.DeleteVaultAsset(vaultID, assetKey)
 }
 
+// CleanAndRepairVault scans, diagnoses, deduplicates, and repairs an existing vault
+func (a *App) CleanAndRepairVault(vaultID string) (*vault.VaultCleanReport, error) {
+	if a.vaultManager == nil {
+		vm, _ := vault.NewVaultManager()
+		a.vaultManager = vm
+	}
+	return a.vaultManager.CleanAndRepairVault(vaultID)
+}
+
+
 // IngestAsset extracts and installs an archive or folder into a vault
 func (a *App) IngestAsset(vaultID, srcPath, targetMode string) (*vault.IngestResult, error) {
 	if a.vaultManager == nil {

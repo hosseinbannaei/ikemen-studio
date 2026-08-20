@@ -26,6 +26,11 @@ export function DeleteVaultAsset(arg1, arg2) {
   return window['go']['main']['App']['DeleteVaultAsset'](arg1, arg2);
 }
 
+export function CleanAndRepairVault(arg1) {
+  return window['go']['main']['App']['CleanAndRepairVault'](arg1);
+}
+
+
 export function DetectExistingGame(arg1) {
   return window['go']['main']['App']['DetectExistingGame'](arg1);
 }

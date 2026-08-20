@@ -338,6 +338,191 @@ func TestIngestStoryboardSkipping(t *testing.T) {
 	}
 }
 
+func TestIngestLooseFilesMultiArchive(t *testing.T) {
+	vaultDir, err := os.MkdirTemp("", "vault_loose_test_*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(vaultDir)
+
+	manifest := &VaultManifest{
+		Version: "1.0",
+		ID:      "vault-loose",
+		Name:    "Loose Archive Test Vault",
+		Assets:  make(map[string]VaultAsset),
+	}
+	_ = SaveManifest(vaultDir, manifest)
+
+	// Create 2 loose archives (files directly at root, no enclosing folder)
+	cammyZipPath := filepath.Join(vaultDir, "cammy_pots.zip")
+	z1, _ := os.Create(cammyZipPath)
+	zw1 := zip.NewWriter(z1)
+	f1, _ := zw1.Create("cammy_pots.def")
+	_, _ = f1.Write([]byte("[Info]\nname = Cammy\ndisplayname = Cammy\nauthor = Pots\n[Files]\ncns = cammy.cns\nsprite = cammy.sff"))
+	f1c, _ := zw1.Create("cammy.cns")
+	_, _ = f1c.Write([]byte("; cns"))
+	_ = zw1.Close()
+	_ = z1.Close()
+
+	sakuraZipPath := filepath.Join(vaultDir, "sakura_pots.zip")
+	z2, _ := os.Create(sakuraZipPath)
+	zw2 := zip.NewWriter(z2)
+	f2, _ := zw2.Create("sakura_pots.def")
+	_, _ = f2.Write([]byte("[Info]\nname = Sakura\ndisplayname = Sakura\nauthor = Pots\n[Files]\ncns = sakura.cns\nsprite = sakura.sff"))
+	f2c, _ := zw2.Create("sakura.cns")
+	_, _ = f2c.Write([]byte("; cns"))
+	_ = zw2.Close()
+	_ = z2.Close()
+
+	// Ingest both loose archives together in one batch
+	res, err := IngestMultiple(vaultDir, []string{cammyZipPath, sakuraZipPath}, "loose_batch")
+	if err != nil {
+		t.Fatalf("IngestMultiple failed: %v", err)
+	}
+
+	if res.ImportedCount != 2 {
+		t.Fatalf("Expected 2 imported assets, got %d", res.ImportedCount)
+	}
+
+	// Verify that cammy folder does NOT contain sakura files
+	cammyDir := filepath.Join(vaultDir, "chars", "cammy_pots")
+	if _, err := os.Stat(filepath.Join(cammyDir, "sakura_pots.def")); err == nil {
+		t.Errorf("Cammy folder was polluted with Sakura files!")
+	}
+
+	// Verify that sakura folder does NOT contain cammy files
+	sakuraDir := filepath.Join(vaultDir, "chars", "sakura_pots")
+	if _, err := os.Stat(filepath.Join(sakuraDir, "cammy_pots.def")); err == nil {
+		t.Errorf("Sakura folder was polluted with Cammy files!")
+	}
+}
+
+func TestIngestDeduplicationInPlace(t *testing.T) {
+	vaultDir, err := os.MkdirTemp("", "vault_dedup_test_*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(vaultDir)
+
+	manifest := &VaultManifest{
+		Version: "1.0",
+		ID:      "vault-dedup",
+		Name:    "Dedup Test Vault",
+		Assets:  make(map[string]VaultAsset),
+	}
+	_ = SaveManifest(vaultDir, manifest)
+
+	// Create test zip
+	zipPath := filepath.Join(vaultDir, "ryu.zip")
+	z, _ := os.Create(zipPath)
+	zw := zip.NewWriter(z)
+	f, _ := zw.Create("ryu/ryu.def")
+	_, _ = f.Write([]byte("[Info]\nname = Ryu\ndisplayname = Ryu\nauthor = Capcom\n[Files]\ncns = ryu.cns"))
+	_ = zw.Close()
+	_ = z.Close()
+
+	// Ingest first time
+	_, err = IngestPath(vaultDir, zipPath, "batch_1")
+	if err != nil {
+		t.Fatalf("First ingest failed: %v", err)
+	}
+
+	// Re-ingest second time (should update in-place without generating ryu_1234)
+	res2, err := IngestPath(vaultDir, zipPath, "batch_2")
+	if err != nil {
+		t.Fatalf("Second ingest failed: %v", err)
+	}
+
+	if res2.ImportedCount != 1 {
+		t.Fatalf("Expected 1 asset imported, got %d", res2.ImportedCount)
+	}
+
+	loaded, _ := LoadManifest(vaultDir)
+	if len(loaded.Assets) != 1 {
+		t.Fatalf("Expected exactly 1 asset in manifest (no duplicate timestamps), got %d: %+v", len(loaded.Assets), loaded.Assets)
+	}
+
+	if _, exists := loaded.Assets["chars/ryu"]; !exists {
+		t.Errorf("Expected key 'chars/ryu', got assets: %+v", loaded.Assets)
+	}
+}
+
+func TestCleanAndRepairVault(t *testing.T) {
+	tempBase, err := os.MkdirTemp("", "vault_repair_test_*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempBase)
+
+	vaultDir := filepath.Join(tempBase, "default")
+	_ = os.MkdirAll(filepath.Join(vaultDir, "chars", "kfm"), 0755)
+	_ = os.MkdirAll(filepath.Join(vaultDir, "chars", "kfm_9999"), 0755) // Duplicate timestamp folder
+
+	// Create kfm def in both
+	_ = os.WriteFile(filepath.Join(vaultDir, "chars", "kfm", "kfm.def"), []byte("[Info]\nname = kfm\ndisplayname = Kung Fu Man\nauthor = Elecbyte\n[Files]\ncns=kfm.cns"), 0644)
+	_ = os.WriteFile(filepath.Join(vaultDir, "chars", "kfm_9999", "kfm.def"), []byte("[Info]\nname = kfm\ndisplayname = Kung Fu Man\nauthor = Elecbyte\n[Files]\ncns=kfm.cns"), 0644)
+
+	// Create a cross-contaminated foreign folder inside kfm: kfm/Ryu/ryu.def
+	_ = os.MkdirAll(filepath.Join(vaultDir, "chars", "kfm", "Ryu"), 0755)
+	_ = os.WriteFile(filepath.Join(vaultDir, "chars", "kfm", "Ryu", "ryu.def"), []byte("[Info]\nname = Ryu\ndisplayname = Ryu\nauthor = Capcom\n[Files]\ncns=ryu.cns"), 0644)
+
+	manifest := &VaultManifest{
+		Version: "1.0",
+		ID:      "vault-default",
+		Name:    "Repair Vault",
+		Assets: map[string]VaultAsset{
+			"chars/kfm": {
+				Key:         "chars/kfm",
+				Category:    CategoryFighter,
+				DisplayName: "Kung Fu Man",
+				Author:      "Elecbyte",
+			},
+			"chars/kfm_9999": {
+				Key:         "chars/kfm_9999",
+				Category:    CategoryFighter,
+				DisplayName: "Kung Fu Man",
+				Author:      "Elecbyte",
+			},
+			"chars/ghost_fighter": {
+				Key:         "chars/ghost_fighter",
+				Category:    CategoryFighter,
+				DisplayName: "Ghost",
+			},
+		},
+	}
+	_ = SaveManifest(vaultDir, manifest)
+
+	vm := &VaultManager{}
+	_, err = vm.RegisterVault(vaultDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	report, err := vm.CleanAndRepairVault("vault-default")
+	if err != nil {
+		t.Fatalf("CleanAndRepairVault failed: %v", err)
+	}
+
+	if report.RemovedDuplicates == 0 {
+		t.Errorf("Expected duplicates to be removed, got %d", report.RemovedDuplicates)
+	}
+	if report.CleanedContaminations == 0 {
+		t.Errorf("Expected contaminated Ryu folder to be removed, got %d", report.CleanedContaminations)
+	}
+	if report.PrunedMissing == 0 {
+		t.Errorf("Expected ghost_fighter to be pruned, got %d", report.PrunedMissing)
+	}
+
+	// Verify kfm_9999 is deleted from disk
+	if _, err := os.Stat(filepath.Join(vaultDir, "chars", "kfm_9999")); !os.IsNotExist(err) {
+		t.Errorf("kfm_9999 still exists on disk!")
+	}
+
+	// Verify foreign Ryu folder is deleted from kfm
+	if _, err := os.Stat(filepath.Join(vaultDir, "chars", "kfm", "Ryu")); !os.IsNotExist(err) {
+		t.Errorf("Contaminated Ryu folder still exists inside kfm!")
+	}
+}
 
 func containsSubstring(str, substr string) bool {
 	return filepath.Clean(str) != "" && len(str) >= len(substr) && (str == substr || len(str) > 0 && len(substr) > 0 && len(str) >= len(substr) && (stringContains(str, substr)))
@@ -351,4 +536,5 @@ func stringContains(s, substr string) bool {
 	}
 	return false
 }
+
 

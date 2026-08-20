@@ -2,24 +2,128 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --bg-app-rgb: 15 17 23;        /* #0f1117 */
-  --bg-sidebar-rgb: 19 22 31;    /* #13161f */
-  --bg-surface-rgb: 22 25 34;    /* #161922 */
-  --bg-hover-rgb: 31 36 48;      /* #1f2430 */
-  --bg-card-rgb: 31 36 48;       /* #1f2430 */
-  --bg-border-rgb: 43 50 66;     /* #2b3242 */
+/* Default Theme: NetherRealm / MKX Minimal Dark */
+:root,
+html[data-theme="mkx"],
+html[data-theme="dark"],
+html:not([data-theme]) {
+  --bg-app-darker-rgb: 7 8 11;       /* #07080b */
+  --bg-app-rgb: 12 13 17;           /* #0c0d11 */
+  --bg-sidebar-rgb: 16 18 24;       /* #101218 */
+  --bg-surface-rgb: 21 24 32;       /* #151820 */
+  --bg-hover-rgb: 28 32 44;         /* #1c202c */
+  --bg-card-rgb: 23 26 36;          /* #171a24 */
+  --bg-border-rgb: 38 43 58;        /* #262b3a */
+
+  --brand-400-rgb: 244 63 94;       /* #f43f5e */
+  --brand-500-rgb: 225 29 72;       /* #e11d48 */
+  --brand-600-rgb: 190 18 60;       /* #be123c */
+  --brand-700-rgb: 159 18 57;       /* #9f1239 */
+  --brand-950-rgb: 76 5 25;         /* #4c0519 */
   color-scheme: dark;
 }
 
-:root.light, html.light {
-  --bg-app-rgb: 248 250 252;     /* #f8fafc */
-  --bg-sidebar-rgb: 241 245 249; /* #f1f5f9 */
-  --bg-surface-rgb: 255 255 255; /* #ffffff */
-  --bg-hover-rgb: 241 245 249;   /* #f1f5f9 */
-  --bg-card-rgb: 255 255 255;    /* #ffffff */
-  --bg-border-rgb: 203 213 225;  /* #cbd5e1 */
+/* Theme: Obsidian Pure Black (OLED Minimal) */
+html[data-theme="obsidian"] {
+  --bg-app-darker-rgb: 0 0 0;
+  --bg-app-rgb: 5 5 5;
+  --bg-sidebar-rgb: 10 10 10;
+  --bg-surface-rgb: 16 16 16;
+  --bg-hover-rgb: 26 26 26;
+  --bg-card-rgb: 18 18 18;
+  --bg-border-rgb: 36 36 36;
+
+  --brand-400-rgb: 6 182 212;
+  --brand-500-rgb: 14 165 233;
+  --brand-600-rgb: 2 132 199;
+  --brand-700-rgb: 3 105 161;
+  --brand-950-rgb: 8 47 73;
+  color-scheme: dark;
+}
+
+/* Theme: Cyber Strike (Tekken Night) */
+html[data-theme="cyber"] {
+  --bg-app-darker-rgb: 4 6 14;
+  --bg-app-rgb: 8 11 22;
+  --bg-sidebar-rgb: 12 16 32;
+  --bg-surface-rgb: 16 22 42;
+  --bg-hover-rgb: 24 34 62;
+  --bg-card-rgb: 18 25 48;
+  --bg-border-rgb: 32 44 80;
+
+  --brand-400-rgb: 96 165 250;
+  --brand-500-rgb: 59 130 246;
+  --brand-600-rgb: 37 99 235;
+  --brand-700-rgb: 29 78 216;
+  --brand-950-rgb: 23 37 84;
+  color-scheme: dark;
+}
+
+/* Theme: Capcom Arcade Navy (Street Fighter Classic) */
+html[data-theme="capcom"] {
+  --bg-app-darker-rgb: 8 12 22;
+  --bg-app-rgb: 13 18 34;
+  --bg-sidebar-rgb: 17 24 45;
+  --bg-surface-rgb: 24 33 60;
+  --bg-hover-rgb: 36 49 84;
+  --bg-card-rgb: 26 36 66;
+  --bg-border-rgb: 44 60 102;
+
+  --brand-400-rgb: 251 191 36;
+  --brand-500-rgb: 245 158 11;
+  --brand-600-rgb: 217 119 6;
+  --brand-700-rgb: 180 83 9;
+  --brand-950-rgb: 69 26 3;
+  color-scheme: dark;
+}
+
+/* Theme: Clean Studio (Light) */
+html[data-theme="light"],
+html.light {
+  --bg-app-darker-rgb: 226 232 240;
+  --bg-app-rgb: 241 245 249;
+  --bg-sidebar-rgb: 248 250 252;
+  --bg-surface-rgb: 255 255 255;
+  --bg-hover-rgb: 241 245 249;
+  --bg-card-rgb: 255 255 255;
+  --bg-border-rgb: 203 213 225;
+
+  --brand-400-rgb: 99 102 241;
+  --brand-500-rgb: 79 70 229;
+  --brand-600-rgb: 67 56 202;
+  --brand-700-rgb: 55 48 163;
+  --brand-950-rgb: 30 27 75;
   color-scheme: light;
+}
+
+/* Corner Radius Modes */
+:root,
+html[data-radius="sharp"],
+html:not([data-radius]) {
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --radius-2xl: 10px;
+  --radius-3xl: 12px;
+}
+
+html[data-radius="subtle"] {
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 14px;
+  --radius-3xl: 16px;
+}
+
+html[data-radius="rounded"] {
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
 }
 
 html, body {
@@ -39,26 +143,34 @@ html, body {
   border-color: rgb(var(--bg-border-rgb) / 0.7);
 }
 
-html.light, html.light body {
+html[data-theme="light"],
+html.light,
+html[data-theme="light"] body,
+html.light body {
   color: #1e293b;
 }
 
+html[data-theme="light"] .text-slate-100,
 html.light .text-slate-100 {
   color: #0f172a !important;
 }
 
+html[data-theme="light"] .text-slate-200,
 html.light .text-slate-200 {
   color: #1e293b !important;
 }
 
+html[data-theme="light"] .text-slate-300,
 html.light .text-slate-300 {
   color: #334155 !important;
 }
 
+html[data-theme="light"] .text-slate-400,
 html.light .text-slate-400 {
   color: #64748b !important;
 }
 
+html[data-theme="light"] .text-slate-500,
 html.light .text-slate-500 {
   color: #64748b !important;
 }
@@ -80,9 +192,9 @@ html.light .text-slate-500 {
 
 ::-webkit-scrollbar-thumb {
   background: rgb(var(--bg-border-rgb));
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3b4252;
+  background: rgb(var(--bg-hover-rgb));
 }

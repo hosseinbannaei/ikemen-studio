@@ -40,9 +40,25 @@ export interface InstalledEngine {
   size: number;
 }
 
+export type ThemeId = 'mkx' | 'obsidian' | 'cyber' | 'capcom' | 'light';
+export type RadiusStyle = 'sharp' | 'subtle' | 'rounded';
+
+export interface ThemePreset {
+  id: ThemeId;
+  name: string;
+  subtitle: string;
+  description: string;
+  accentHex: string;
+  bgHex: string;
+  cardHex: string;
+  borderHex: string;
+  tag: string;
+}
+
 export interface Settings {
   enginesDir: string;
   theme: string;
+  radiusStyle?: RadiusStyle;
   recentProjects: string[];
   defaultChannel: string;
   registeredVaults?: string[];
@@ -99,6 +115,17 @@ export interface IngestResult {
   imported_count: number;
   warnings: string[];
 }
+
+export interface VaultCleanReport {
+  vault_id: string;
+  removed_duplicates: number;
+  cleaned_contaminations: number;
+  regenerated_previews: number;
+  pruned_missing: number;
+  total_assets_now: number;
+  details: string[];
+}
+
 
 export interface DownloadProgress {
   version: string;

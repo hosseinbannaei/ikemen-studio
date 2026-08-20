@@ -197,6 +197,11 @@
     }
   }
 
+  async function handleCleanVault() {
+    const vaultId = $vaultStore.activeVaultId === 'all' ? 'vault-default' : $vaultStore.activeVaultId;
+    await vaultStore.cleanAndRepair(vaultId);
+  }
+
   function getCategoryCount(cat: AssetCategory | 'all'): number {
     if (cat === 'all') return $vaultStore.assets.length;
     return $vaultStore.assets.filter((a) => a.category === cat).length;
@@ -263,12 +268,22 @@
         <!-- Action Buttons -->
         <div class="flex items-center gap-2.5">
           <button
+            on:click={handleCleanVault}
+            title="Clean contaminated subfolders, remove duplicate entries, and fix broken portraits"
+            class="px-3 py-2 bg-dark-800 hover:bg-dark-700 border border-dark-600/80 text-emerald-400 hover:text-emerald-300 text-xs font-semibold rounded-xl transition flex items-center gap-1.5"
+          >
+            <Sparkles class="w-4 h-4 text-emerald-400" />
+            <span>Clean & Repair</span>
+          </button>
+
+          <button
             on:click={() => (showCreateModal = true)}
             class="px-3 py-2 bg-dark-800 hover:bg-dark-700 border border-dark-600/80 text-slate-300 text-xs font-semibold rounded-xl transition flex items-center gap-1.5"
           >
             <FolderPlus class="w-4 h-4 text-brand-400" />
             <span>New / Mount Vault</span>
           </button>
+
 
           <button
             on:click={handleBrowseFolder}

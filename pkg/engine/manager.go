@@ -9,56 +9,94 @@ import (
 	"time"
 )
 
-// ListInstalledEngines scans the engines directory and returns all valid installed engines
+// ListInstalledEngines scans the engines directory (and any standard fallback paths) and returns all valid installed engines
 func ListInstalledEngines(enginesDir string) ([]InstalledEngine, error) {
-	if _, err := os.Stat(enginesDir); os.IsNotExist(err) {
-		return []InstalledEngine{}, nil
-	}
-
-	entries, err := os.ReadDir(enginesDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read engines directory: %w", err)
-	}
-
+	seenVersions := make(map[string]bool)
 	var engines []InstalledEngine
-	for _, entry := range entries {
-		if !entry.IsDir() || strings.Contains(entry.Name(), ".tmp") {
-			continue
-		}
 
-		version := entry.Name()
-		enginePath := filepath.Join(enginesDir, version)
-		execPath := FindEngineExecutable(enginePath)
-		if execPath == "" {
-			// Not a fully installed engine or missing binary
-			continue
-		}
+	// Directories to scan in priority order
+	candidateDirs := []string{enginesDir}
 
-		info, err := entry.Info()
-		var installedAt time.Time
+	// Add standard fallback paths only when not given an explicit custom directory
+	if enginesDir == "" {
+		homeDir, err := os.UserHomeDir()
 		if err == nil {
-			installedAt = info.ModTime()
+			stdDir := filepath.Join(homeDir, ".local", "share", "ikemen-studio", "engines")
+			candidateDirs = append(candidateDirs, stdDir)
+
+			// Also check VS Code / Snap sandbox directory if present
+			snapGlob := filepath.Join(homeDir, "snap", "code", "*", ".local", "share", "ikemen-studio", "engines")
+			if matches, err := filepath.Glob(snapGlob); err == nil {
+				for _, m := range matches {
+					candidateDirs = append(candidateDirs, m)
+				}
+			}
+		}
+	}
+
+
+	for _, dir := range candidateDirs {
+		if dir == "" {
+			continue
+		}
+		if _, statErr := os.Stat(dir); os.IsNotExist(statErr) {
+			continue
 		}
 
-		channel := "stable"
-		if strings.Contains(strings.ToLower(version), "nightly") || strings.Contains(strings.ToLower(version), "pre") || strings.Contains(strings.ToLower(version), "rc") {
-			channel = "nightly"
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
 		}
 
-		size := calculateDirSize(enginePath)
+		for _, entry := range entries {
+			if !entry.IsDir() || strings.Contains(entry.Name(), ".tmp") {
+				continue
+			}
 
-		engines = append(engines, InstalledEngine{
-			Version:        version,
-			Path:           enginePath,
-			ExecutablePath: execPath,
-			InstalledAt:    installedAt,
-			Channel:        channel,
-			Size:           size,
-		})
+			version := entry.Name()
+			if seenVersions[strings.ToLower(version)] {
+				continue
+			}
+
+			enginePath := filepath.Join(dir, version)
+			execPath := FindEngineExecutable(enginePath)
+			if execPath == "" {
+				continue
+			}
+
+			// Ensure binary is executable on Unix
+			if runtime.GOOS != "windows" {
+				_ = os.Chmod(execPath, 0755)
+			}
+
+			info, err := entry.Info()
+			var installedAt time.Time
+			if err == nil {
+				installedAt = info.ModTime()
+			}
+
+			channel := "stable"
+			if strings.Contains(strings.ToLower(version), "nightly") || strings.Contains(strings.ToLower(version), "pre") || strings.Contains(strings.ToLower(version), "rc") || strings.Contains(strings.ToLower(version), "dev") {
+				channel = "nightly"
+			}
+
+			size := calculateDirSize(enginePath)
+
+			engines = append(engines, InstalledEngine{
+				Version:        version,
+				Path:           enginePath,
+				ExecutablePath: execPath,
+				InstalledAt:    installedAt,
+				Channel:        channel,
+				Size:           size,
+			})
+			seenVersions[strings.ToLower(version)] = true
+		}
 	}
 
 	return engines, nil
 }
+
 
 // FindEngineExecutable finds the binary inside an engine directory
 func FindEngineExecutable(enginePath string) string {

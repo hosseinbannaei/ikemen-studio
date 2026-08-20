@@ -18,6 +18,9 @@ export function DeleteEngine(arg1:string):Promise<void>;
 
 export function DeleteVaultAsset(arg1:string,arg2:string):Promise<void>;
 
+export function CleanAndRepairVault(arg1:string):Promise<vault.VaultCleanReport>;
+
+
 export function DetectExistingGame(arg1:string):Promise<project.ExistingGameInspection>;
 
 export function DownloadEngine(arg1:string):Promise<void>;

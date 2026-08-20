@@ -50,18 +50,35 @@ func IngestMultiple(vaultPath string, srcPaths []string, sourcePackage string) (
 	}
 	defer os.RemoveAll(stagingDir)
 
-	// Extract or copy all sources into staging
 	var extractErrors []string
-	for _, src := range srcPaths {
-		if err := extractOrCopy(src, stagingDir); err != nil {
-			extractErrors = append(extractErrors, fmt.Sprintf("%s: %v", filepath.Base(src), err))
-		}
-	}
+	var discovered []DiscoveredAsset
 
-	// Deep scan the staging folder for assets
-	discovered, err := ScanStagingDir(stagingDir)
-	if err != nil {
-		return nil, fmt.Errorf("scanning staging assets failed: %w", err)
+	// Process each source path in its OWN isolated sub-staging directory
+	for i, src := range srcPaths {
+		srcBase := filepath.Base(src)
+		srcClean := sanitizeFolderName(strings.TrimSuffix(srcBase, filepath.Ext(srcBase)))
+		if srcClean == "" {
+			srcClean = fmt.Sprintf("pkg_%03d", i)
+		}
+		subStaging := filepath.Join(stagingDir, fmt.Sprintf("src_%03d_%s", i, srcClean))
+		if err := os.MkdirAll(subStaging, 0755); err != nil {
+			extractErrors = append(extractErrors, fmt.Sprintf("%s: failed to create sub-staging: %v", srcBase, err))
+			continue
+		}
+
+		if err := extractOrCopy(src, subStaging); err != nil {
+			extractErrors = append(extractErrors, fmt.Sprintf("%s: %v", srcBase, err))
+			continue
+		}
+
+		// Check if the sub-staging directory has loose character files at its root (e.g. def/cns directly at root)
+		ensureLooseFilesWrapped(subStaging, srcClean)
+
+		// Scan this isolated staging directory
+		subDiscovered, scanErr := ScanStagingDir(subStaging)
+		if scanErr == nil && len(subDiscovered) > 0 {
+			discovered = append(discovered, subDiscovered...)
+		}
 	}
 
 	if len(discovered) == 0 {
@@ -78,6 +95,9 @@ func IngestMultiple(vaultPath string, srcPaths []string, sourcePackage string) (
 		SourcePackage:  sourcePackage,
 		Warnings:       extractErrors,
 	}
+
+	// Track imported keys to prevent internal collisions within the same batch
+	importedInBatch := make(map[string]bool)
 
 	for _, disc := range discovered {
 		categoryDir := "chars"
@@ -97,18 +117,27 @@ func IngestMultiple(vaultPath string, srcPaths []string, sourcePackage string) (
 
 		// Determine target asset directory name
 		cleanName := sanitizeFolderName(disc.FolderName)
-		if cleanName == "" {
+		if cleanName == "" && disc.DefInfo != nil {
 			cleanName = sanitizeFolderName(disc.DefInfo.Name)
 		}
 		if cleanName == "" {
 			cleanName = "asset_" + fmt.Sprintf("%d", time.Now().UnixNano()%100000)
 		}
 
+		assetKey := fmt.Sprintf("%s/%s", categoryDir, cleanName)
+
+		// If collision within the SAME batch from two distinct subfolders with the same name, disambiguate
+		if importedInBatch[assetKey] {
+			cleanName = fmt.Sprintf("%s_%d", cleanName, time.Now().UnixNano()%1000)
+			assetKey = fmt.Sprintf("%s/%s", categoryDir, cleanName)
+		}
+		importedInBatch[assetKey] = true
+
 		destAssetDir := filepath.Join(targetCategoryPath, cleanName)
-		// If collision, append timestamp
+
+		// In-place update / overwrite: If directory already exists on disk, remove old contents cleanly
 		if _, err := os.Stat(destAssetDir); err == nil {
-			destAssetDir = fmt.Sprintf("%s_%d", destAssetDir, time.Now().UnixNano()%10000)
-			cleanName = filepath.Base(destAssetDir)
+			_ = os.RemoveAll(destAssetDir)
 		}
 
 		// Copy asset directory from staging to vault
@@ -117,14 +146,13 @@ func IngestMultiple(vaultPath string, srcPaths []string, sourcePackage string) (
 			continue
 		}
 
-		assetKey := fmt.Sprintf("%s/%s", categoryDir, cleanName)
-
 		// Locate SFF file for portrait extraction
 		var sffPath string
 		if disc.DefInfo.SpriteFile != "" {
-			sffPath = filepath.Join(destAssetDir, disc.DefInfo.SpriteFile)
+			sffClean := strings.ReplaceAll(disc.DefInfo.SpriteFile, "\\", "/")
+			sffPath = filepath.Join(destAssetDir, sffClean)
 			if _, err := os.Stat(sffPath); err != nil {
-				sffPath = findFileCaseInsensitive(destAssetDir, disc.DefInfo.SpriteFile)
+				sffPath = ResolvePathCaseInsensitive(destAssetDir, sffClean)
 			}
 		}
 
@@ -177,6 +205,20 @@ func IngestMultiple(vaultPath string, srcPaths []string, sourcePackage string) (
 			AddedAt:       time.Now().UTC(),
 		}
 
+		// Preserve existing user tags / notes if updating an existing asset
+		if existing, exists := manifest.Assets[assetKey]; exists {
+			if len(existing.Tags) > 0 && len(vaultAsset.Tags) == 0 {
+				vaultAsset.Tags = existing.Tags
+			}
+			if existing.Notes != "" && vaultAsset.Notes == "" {
+				vaultAsset.Notes = existing.Notes
+			}
+			if existing.SourceURL != "" && vaultAsset.SourceURL == "" {
+				vaultAsset.SourceURL = existing.SourceURL
+			}
+			vaultAsset.AddedAt = existing.AddedAt
+		}
+
 		manifest.Assets[assetKey] = vaultAsset
 		result.DetectedAssets = append(result.DetectedAssets, vaultAsset)
 		result.ImportedCount++
@@ -189,16 +231,64 @@ func IngestMultiple(vaultPath string, srcPaths []string, sourcePackage string) (
 	return result, nil
 }
 
+// ensureLooseFilesWrapped checks if staging directory has loose character files at its root.
+// If so, moves them into an enclosing folder so they don't pollute parent staging scans.
+func ensureLooseFilesWrapped(stagingDir, archiveName string) {
+	entries, err := os.ReadDir(stagingDir)
+	if err != nil {
+		return
+	}
+
+	hasLooseDef := false
+	var looseItems []string
+	subDirCount := 0
+
+	for _, e := range entries {
+		if !e.IsDir() {
+			looseItems = append(looseItems, e.Name())
+			if strings.HasSuffix(strings.ToLower(e.Name()), ".def") {
+				hasLooseDef = true
+			}
+		} else {
+			subDirCount++
+		}
+	}
+
+	// If there are loose .def files directly at the root, wrap everything into archiveName subfolder
+	if hasLooseDef {
+		wrapFolder := filepath.Join(stagingDir, archiveName)
+		if err := os.MkdirAll(wrapFolder, 0755); err != nil {
+			return
+		}
+
+		for _, e := range entries {
+			if e.Name() == archiveName {
+				continue
+			}
+			oldP := filepath.Join(stagingDir, e.Name())
+			newP := filepath.Join(wrapFolder, e.Name())
+			_ = os.Rename(oldP, newP)
+		}
+	}
+}
+
 // ScanStagingDir recursively looks for .def files and isolates the enclosing asset roots.
 func ScanStagingDir(stagingDir string) ([]DiscoveredAsset, error) {
 	var discovered []DiscoveredAsset
 
-	// 1. Group all .def files by their enclosing directory
 	type candidateDef struct {
 		path    string
 		defInfo *DefInfo
 	}
 	folderDefs := make(map[string][]candidateDef)
+
+	// Auxiliary folders to ignore as standalone character roots
+	auxiliaryDirs := map[string]bool{
+		"storyboard": true, "intro": true, "ending": true, "cutscene": true,
+		"states": true, "pal": true, "palettes": true, "media": true, "id": true,
+		"code": true, "common": true, "add": true, "backup": true, "ai": true,
+		"introending": true, "txt": true, "sound": true, "portraits": true,
+	}
 
 	err := filepath.Walk(stagingDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
@@ -206,9 +296,16 @@ func ScanStagingDir(stagingDir string) ([]DiscoveredAsset, error) {
 		}
 
 		if strings.ToLower(filepath.Ext(path)) == ".def" {
+			folderRoot := filepath.Dir(path)
+			folderName := strings.ToLower(filepath.Base(folderRoot))
+
+			// Skip if inside an auxiliary folder
+			if auxiliaryDirs[folderName] {
+				return nil
+			}
+
 			defInfo, parseErr := ParseDefFile(path)
 			if parseErr == nil && defInfo != nil {
-				folderRoot := filepath.Dir(path)
 				folderDefs[folderRoot] = append(folderDefs[folderRoot], candidateDef{
 					path:    path,
 					defInfo: defInfo,
@@ -222,10 +319,10 @@ func ScanStagingDir(stagingDir string) ([]DiscoveredAsset, error) {
 		return nil, err
 	}
 
-	// 2. For each directory root, select the single best primary .def file
+	// For each directory root, select the best primary .def file
 	for folderRoot, candidates := range folderDefs {
 		folderName := filepath.Base(folderRoot)
-		if folderRoot == stagingDir || strings.HasPrefix(folderName, "archive_") {
+		if folderRoot == stagingDir || strings.HasPrefix(folderName, "src_") {
 			if len(candidates) > 0 {
 				folderName = strings.TrimSuffix(filepath.Base(candidates[0].path), filepath.Ext(candidates[0].path))
 			}
@@ -243,8 +340,8 @@ func ScanStagingDir(stagingDir string) ([]DiscoveredAsset, error) {
 			}
 		}
 
-		// If best score is still negative (e.g. only standalone storyboard cutscenes), skip
-		if bestDef == nil || (bestScore < 0 && !bestDef.defInfo.IsLifebar && bestDef.defInfo.Category != CategoryStage) {
+		// If best score is <= 0 or not a valid asset, skip
+		if bestDef == nil || bestScore <= 0 || !bestDef.defInfo.IsValidAsset {
 			continue
 		}
 
@@ -269,41 +366,52 @@ func ScanStagingDir(stagingDir string) ([]DiscoveredAsset, error) {
 func scoreDefCandidate(defPath string, info *DefInfo, folderName string) int {
 	base := strings.ToLower(strings.TrimSuffix(filepath.Base(defPath), filepath.Ext(defPath)))
 
-	// Storyboards (ending.def, intro.def, credits.def) must NOT be chosen as character defs
-	if info.IsStoryboard || base == "ending" || base == "intro" || base == "credits" || base == "logo" || base == "cutscene" {
-		return -100
+	// Discard auxiliary defs completely
+	if info.IsStoryboard || info.IsFont || info.IsCommand || !info.IsValidAsset ||
+		base == "ending" || base == "intro" || base == "credits" || base == "logo" ||
+		base == "cutscene" || base == "introduction" || base == "font" || base == "command" {
+		return -1000
 	}
 
-	score := 0
+	score := 10
 
-	// Match folder name (e.g. kfm.def inside kfm/)
-	if strings.EqualFold(base, folderName) {
+	// Match folder name (e.g. kfm.def inside kfm/ or Black Cat1.def inside Black Cat1/)
+	cleanBase := sanitizeFolderName(base)
+	cleanFolder := sanitizeFolderName(folderName)
+	if strings.EqualFold(cleanBase, cleanFolder) || strings.EqualFold(base, folderName) {
 		score += 60
 	}
 
 	if info.HasFilesBlock {
-		score += 30
+		score += 40
 	}
 
 	if info.SpriteFile != "" {
 		score += 20
 	}
 
-	if info.IsLifebar {
-		score += 40
+	if info.CmdFile != "" || info.CnsFile != "" || info.AnimFile != "" {
+		score += 20
+	}
+
+	if info.Category == CategoryFighter {
+		score += 30
 	}
 
 	if info.Category == CategoryStage {
 		score += 40
 	}
 
-	if info.DisplayName != "" && !strings.EqualFold(info.DisplayName, "ending") && !strings.EqualFold(info.DisplayName, "intro") {
+	if info.Category == CategoryMotif {
+		score += 40
+	}
+
+	if info.DisplayName != "" && !strings.EqualFold(info.DisplayName, "Unknown") {
 		score += 10
 	}
 
 	return score
 }
-
 
 func isArchive(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))
@@ -328,7 +436,6 @@ func extractOrCopy(src, dest string) error {
 		})
 
 		if len(nestedArchives) > 0 {
-			// Unpack all nested archives into individual subfolders in dest
 			for _, arch := range nestedArchives {
 				base := strings.TrimSuffix(filepath.Base(arch), filepath.Ext(arch))
 				archDest := filepath.Join(dest, "archive_"+sanitizeFolderName(base))
@@ -337,7 +444,7 @@ func extractOrCopy(src, dest string) error {
 			}
 		}
 
-		// Also copy any direct loose folders/files
+		// Also copy loose folders/files
 		return copyDir(src, dest)
 	}
 
@@ -351,7 +458,6 @@ func extractSingleArchive(src, dest string) error {
 		if err := unzip(src, dest); err == nil {
 			return nil
 		}
-		// Fallback to CLI
 		return extractCLI(src, dest)
 	} else if ext == ".gz" || ext == ".tgz" || ext == ".tar" {
 		if err := untar(src, dest); err == nil {
@@ -592,22 +698,6 @@ func findFirstExt(dir, ext string) string {
 	return result
 }
 
-func findFileCaseInsensitive(dir, target string) string {
-	cleanTarget := strings.ToLower(filepath.Clean(target))
-	var result string
-	_ = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err == nil && info != nil {
-			rel, _ := filepath.Rel(dir, path)
-			if strings.ToLower(filepath.Clean(rel)) == cleanTarget {
-				result = path
-				return io.EOF
-			}
-		}
-		return nil
-	})
-	return result
-}
-
 func sanitizeFolderName(name string) string {
 	invalid := []string{"/", "\\", ":", "*", "?", "\"", "<", ">", "|", " "}
 	result := name
@@ -616,3 +706,4 @@ func sanitizeFolderName(name string) string {
 	}
 	return strings.ToLower(strings.Trim(result, "._"))
 }
+

@@ -433,23 +433,51 @@ func ScanAvailableStages(projectDir string) []string {
 
 func resolveCharInfo(projectDir, charName string) (string, string, string, string) {
 	cleanName := strings.TrimSpace(charName)
+	cleanName = strings.ReplaceAll(cleanName, "\\", "/")
 	cleanName = strings.TrimPrefix(cleanName, "chars/")
+	explicitDef := ""
 	if idx := strings.Index(cleanName, "/"); idx != -1 {
+		explicitDef = cleanName[idx+1:]
 		cleanName = cleanName[:idx]
 	}
 
 	charDir := filepath.Join(projectDir, "chars", cleanName)
-	defFile := filepath.Join(charDir, cleanName+".def")
+	var defFile string
 
-	if _, err := os.Stat(defFile); os.IsNotExist(err) {
-		// Look for any .def in charDir
+	if explicitDef != "" {
+		targetDef := filepath.Join(charDir, explicitDef)
+		if fileExists(targetDef) {
+			defFile = targetDef
+		} else {
+			defFile = vault.ResolvePathCaseInsensitive(charDir, explicitDef)
+		}
+	}
+
+	if defFile == "" {
+		stdDef := filepath.Join(charDir, cleanName+".def")
+		if fileExists(stdDef) {
+			defFile = stdDef
+		} else {
+			// Find case-insensitive exact name match
+			defFile = vault.ResolvePathCaseInsensitive(charDir, cleanName+".def")
+		}
+	}
+
+	if defFile == "" {
+		// Look for best candidate .def in charDir (skipping auxiliary storyboards/fonts)
+		var bestDef string
 		_ = filepath.Walk(charDir, func(p string, info os.FileInfo, err error) error {
 			if err == nil && !info.IsDir() && strings.HasSuffix(strings.ToLower(p), ".def") {
-				defFile = p
-				return ioEOF()
+				base := strings.ToLower(filepath.Base(p))
+				if base != "intro.def" && base != "ending.def" && base != "credits.def" &&
+					base != "font.def" && base != "command.def" && base != "introduction.def" {
+					bestDef = p
+					return ioEOF()
+				}
 			}
 			return nil
 		})
+		defFile = bestDef
 	}
 
 	displayName := cleanName
@@ -466,7 +494,11 @@ func resolveCharInfo(projectDir, charName string) (string, string, string, strin
 
 		sffPath := ""
 		if defInfo.SpriteFile != "" {
-			sffPath = filepath.Join(charDir, defInfo.SpriteFile)
+			sffClean := strings.ReplaceAll(defInfo.SpriteFile, "\\", "/")
+			sffPath = filepath.Join(charDir, sffClean)
+			if !fileExists(sffPath) {
+				sffPath = vault.ResolvePathCaseInsensitive(charDir, sffClean)
+			}
 		}
 		if sffPath == "" || !fileExists(sffPath) {
 			_ = filepath.Walk(charDir, func(p string, info os.FileInfo, err error) error {

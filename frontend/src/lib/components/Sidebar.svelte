@@ -81,14 +81,14 @@
       type="button"
       class="w-full flex items-center {collapsed ? 'justify-center p-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition-all relative group {
         activeTab === 'projects'
-          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+          ? 'bg-brand-600 text-white shadow-md shadow-brand-950/40'
           : 'text-slate-400 hover:text-slate-200 hover:bg-dark-700/60'
       }"
       title={collapsed ? 'Projects' : ''}
       on:click={() => onSelectTab('projects')}
     >
       <div class="flex items-center gap-2.5">
-        <FolderKanban class="w-4 h-4 {activeTab === 'projects' ? 'text-white' : 'text-indigo-400'}" />
+        <FolderKanban class="w-4 h-4 {activeTab === 'projects' ? 'text-white' : 'text-brand-400'}" />
         {#if !collapsed}
           <span>Projects</span>
         {/if}
@@ -109,7 +109,7 @@
       type="button"
       class="w-full flex items-center {collapsed ? 'justify-center p-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition-all group {
         activeTab === 'vault'
-          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+          ? 'bg-brand-600 text-white shadow-md shadow-brand-950/40'
           : 'text-slate-400 hover:text-slate-200 hover:bg-dark-700/60'
       }"
       title={collapsed ? 'Asset Vault' : ''}
@@ -128,7 +128,7 @@
       type="button"
       class="w-full flex items-center {collapsed ? 'justify-center p-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition-all group {
         activeTab === 'engines'
-          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+          ? 'bg-brand-600 text-white shadow-md shadow-brand-950/40'
           : 'text-slate-400 hover:text-slate-200 hover:bg-dark-700/60'
       }"
       title={collapsed ? 'Engines' : ''}
@@ -142,7 +142,7 @@
       </div>
       {#if !collapsed}
         <span class="text-[10px] font-mono px-1.5 py-0.5 rounded-full {
-          activeTab === 'engines' ? 'bg-indigo-700 text-white' : 'bg-dark-700 text-slate-400'
+          activeTab === 'engines' ? 'bg-brand-700 text-white' : 'bg-dark-700 text-slate-400'
         }">
           {$engineStore.installed.length}
         </span>
@@ -154,7 +154,7 @@
       type="button"
       class="w-full flex items-center {collapsed ? 'justify-center p-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition-all group {
         activeTab === 'settings'
-          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+          ? 'bg-brand-600 text-white shadow-md shadow-brand-950/40'
           : 'text-slate-400 hover:text-slate-200 hover:bg-dark-700/60'
       }"
       title={collapsed ? 'Settings' : ''}
@@ -174,7 +174,7 @@
     {#if $projectStore.current}
       <button
         type="button"
-        class="w-full {collapsed ? 'p-2 flex items-center justify-center' : 'p-2.5 flex flex-col gap-1.5 text-left'} rounded-xl bg-dark-800 border border-dark-600/60 hover:border-indigo-500/50 transition group shadow-sm"
+        class="w-full {collapsed ? 'p-2 flex items-center justify-center' : 'p-2.5 flex flex-col gap-1.5 text-left'} rounded-xl bg-dark-800 border border-dark-600/60 hover:border-brand-500/50 transition group shadow-sm"
         title={collapsed ? `Current Project: ${$projectStore.current.name}` : ''}
         on:click={onOpenProjectWorkspace}
       >
@@ -194,7 +194,7 @@
             {/if}
           </div>
           <div class="flex items-center justify-between w-full">
-            <span class="text-xs font-bold text-slate-100 truncate group-hover:text-indigo-300 transition">
+            <span class="text-xs font-bold text-slate-100 truncate group-hover:text-brand-300 transition">
               {$projectStore.current.name}
             </span>
             <ChevronRight class="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition flex-shrink-0" />
@@ -204,7 +204,7 @@
           </span>
         {:else}
           <div class="relative">
-            <Gamepad2 class="w-5 h-5 text-indigo-400" />
+            <Gamepad2 class="w-5 h-5 text-brand-400" />
             {#if isRunning}
               <span class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400"></span>
             {/if}
@@ -231,7 +231,7 @@
           <Sun class="w-3.5 h-3.5 text-amber-500" />
           {#if !collapsed}<span class="text-[11px] font-semibold text-slate-700">Light</span>{/if}
         {:else}
-          <Moon class="w-3.5 h-3.5 text-indigo-400" />
+          <Moon class="w-3.5 h-3.5 text-brand-400" />
           {#if !collapsed}<span class="text-[11px] font-semibold text-slate-300">Dark</span>{/if}
         {/if}
       </button>
