@@ -65,6 +65,7 @@ func FindEngineExecutable(enginePath string) string {
 	var candidates []string
 	if runtime.GOOS == "windows" {
 		candidates = []string{
+			filepath.Join(enginePath, "Ikemen_GO_Windows.exe"),
 			filepath.Join(enginePath, "Ikemen_GO.exe"),
 			filepath.Join(enginePath, "ikemen_go.exe"),
 			filepath.Join(enginePath, "Ikemen.exe"),
@@ -72,6 +73,7 @@ func FindEngineExecutable(enginePath string) string {
 		}
 	} else if runtime.GOOS == "darwin" {
 		candidates = []string{
+			filepath.Join(enginePath, "Ikemen_GO_MacOS"),
 			filepath.Join(enginePath, "Ikemen_GO.app", "Contents", "MacOS", "Ikemen_GO"),
 			filepath.Join(enginePath, "Ikemen_GO"),
 			filepath.Join(enginePath, "ikemen_go"),
@@ -79,6 +81,8 @@ func FindEngineExecutable(enginePath string) string {
 		}
 	} else {
 		candidates = []string{
+			filepath.Join(enginePath, "Ikemen_GO_Linux"),
+			filepath.Join(enginePath, "ikemen_go_linux"),
 			filepath.Join(enginePath, "Ikemen_GO"),
 			filepath.Join(enginePath, "ikemen_go"),
 			filepath.Join(enginePath, "Ikemen_GO.x86_64"),
@@ -100,7 +104,13 @@ func FindEngineExecutable(enginePath string) string {
 			return nil
 		}
 		name := strings.ToLower(info.Name())
-		if (name == "ikemen_go" || name == "ikemen_go.exe") && found == "" {
+		if (strings.HasPrefix(name, "ikemen_go") || strings.HasPrefix(name, "ikemen")) &&
+			!strings.HasSuffix(name, ".png") &&
+			!strings.HasSuffix(name, ".desktop") &&
+			!strings.HasSuffix(name, ".txt") &&
+			!strings.HasSuffix(name, ".md") &&
+			!strings.HasSuffix(name, ".command") &&
+			found == "" {
 			found = path
 		}
 		return nil
