@@ -336,6 +336,86 @@ func (a *App) VerifyAndRepairProjectWithMode(projectDir string, updateCoreSystem
 	return project.VerifyAndRepairProjectWithMode(engineDir, projectDir, updateCoreSystem)
 }
 
+// InspectProjectDifferences compares project files against clean engine template
+func (a *App) InspectProjectDifferences(projectDir string) (*project.ProjectDiffSummary, error) {
+	manifest, err := project.LoadManifest(projectDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load project manifest: %w", err)
+	}
+
+	cfg, err := config.LoadSettings()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load settings: %w", err)
+	}
+
+	engineDir := filepath.Join(cfg.EnginesDir, manifest.Engine.Version)
+	return project.InspectProjectDifferences(projectDir, engineDir)
+}
+
+// SyncProjectAssets selectively updates project assets with clean engine defaults
+func (a *App) SyncProjectAssets(opts project.AssetSyncOptions) (*project.VerificationReport, error) {
+	manifest, err := project.LoadManifest(opts.ProjectDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load project manifest: %w", err)
+	}
+
+	cfg, err := config.LoadSettings()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load settings: %w", err)
+	}
+
+	opts.EngineDir = filepath.Join(cfg.EnginesDir, manifest.Engine.Version)
+	return project.SyncProjectAssets(opts)
+}
+
+// InspectGameConfig validates config.ini against engine standards
+func (a *App) InspectGameConfig(projectDir string) (*config.ConfigInspectionResult, error) {
+	manifest, err := project.LoadManifest(projectDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load project manifest: %w", err)
+	}
+
+	cfg, err := config.LoadSettings()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load settings: %w", err)
+	}
+
+	engineDir := filepath.Join(cfg.EnginesDir, manifest.Engine.Version)
+	return config.InspectGameConfig(projectDir, engineDir)
+}
+
+// RepairGameConfig automatically fixes invalid and legacy config keys in save/config.ini
+func (a *App) RepairGameConfig(projectDir string) error {
+	manifest, err := project.LoadManifest(projectDir)
+	if err != nil {
+		return fmt.Errorf("failed to load project manifest: %w", err)
+	}
+
+	cfg, err := config.LoadSettings()
+	if err != nil {
+		return fmt.Errorf("failed to load settings: %w", err)
+	}
+
+	engineDir := filepath.Join(cfg.EnginesDir, manifest.Engine.Version)
+	return config.RepairGameConfig(projectDir, engineDir)
+}
+
+// ResetGameConfig restores save/config.ini to clean engine defaults
+func (a *App) ResetGameConfig(projectDir string) error {
+	manifest, err := project.LoadManifest(projectDir)
+	if err != nil {
+		return fmt.Errorf("failed to load project manifest: %w", err)
+	}
+
+	cfg, err := config.LoadSettings()
+	if err != nil {
+		return fmt.Errorf("failed to load settings: %w", err)
+	}
+
+	engineDir := filepath.Join(cfg.EnginesDir, manifest.Engine.Version)
+	return config.ResetGameConfig(projectDir, engineDir)
+}
+
 // OpenProjectLogsFolder opens the project's save/logs directory in the OS file explorer
 func (a *App) OpenProjectLogsFolder(projectDir string) error {
 	logsDir := filepath.Join(projectDir, "save", "logs")
@@ -351,6 +431,24 @@ func (a *App) GetGameConfig(projectDir string) (map[string]string, error) {
 // SaveGameConfig updates save/config.ini in project
 func (a *App) SaveGameConfig(projectDir string, updates map[string]string) error {
 	return config.SaveGameConfig(projectDir, updates)
+}
+
+// GetProjectLogs reads the latest engine or verify logs for in-app viewing
+func (a *App) GetProjectLogs(projectDir string) (string, error) {
+	candidates := []string{
+		filepath.Join(projectDir, "save", "logs", "ikemen-latest.log"),
+		filepath.Join(projectDir, "save", "logs", "ikemen.log"),
+		filepath.Join(projectDir, "save", "logs", "asset_sync_report.log"),
+		filepath.Join(projectDir, "save", "logs", "verify_report.log"),
+	}
+
+	for _, p := range candidates {
+		if data, err := os.ReadFile(p); err == nil && len(data) > 0 {
+			return string(data), nil
+		}
+	}
+
+	return "No log files recorded yet.", nil
 }
 
 func (a *App) addToRecentProjects(projectDir string, cfg *config.Settings) {

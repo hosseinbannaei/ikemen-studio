@@ -38,6 +38,10 @@ export function GetInstalledEngines() {
   return window['go']['main']['App']['GetInstalledEngines']();
 }
 
+export function GetProjectLogs(arg1) {
+  return window['go']['main']['App']['GetProjectLogs'](arg1);
+}
+
 export function GetRecentProjects() {
   return window['go']['main']['App']['GetRecentProjects']();
 }
@@ -52,6 +56,14 @@ export function ImportExistingGame(arg1, arg2, arg3, arg4, arg5) {
 
 export function ImportExistingGameWithOptions(arg1) {
   return window['go']['main']['App']['ImportExistingGameWithOptions'](arg1);
+}
+
+export function InspectGameConfig(arg1) {
+  return window['go']['main']['App']['InspectGameConfig'](arg1);
+}
+
+export function InspectProjectDifferences(arg1) {
+  return window['go']['main']['App']['InspectProjectDifferences'](arg1);
 }
 
 export function IsProjectRunning(arg1) {
@@ -82,6 +94,14 @@ export function RemoveRecentProject(arg1) {
   return window['go']['main']['App']['RemoveRecentProject'](arg1);
 }
 
+export function RepairGameConfig(arg1) {
+  return window['go']['main']['App']['RepairGameConfig'](arg1);
+}
+
+export function ResetGameConfig(arg1) {
+  return window['go']['main']['App']['ResetGameConfig'](arg1);
+}
+
 export function RollbackProjectEngine(arg1, arg2) {
   return window['go']['main']['App']['RollbackProjectEngine'](arg1, arg2);
 }
@@ -104,6 +124,10 @@ export function StopProject(arg1) {
 
 export function SwitchProjectEngine(arg1, arg2) {
   return window['go']['main']['App']['SwitchProjectEngine'](arg1, arg2);
+}
+
+export function SyncProjectAssets(arg1) {
+  return window['go']['main']['App']['SyncProjectAssets'](arg1);
 }
 
 export function UpdateSettings(arg1) {

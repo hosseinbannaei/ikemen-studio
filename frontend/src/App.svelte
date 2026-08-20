@@ -8,6 +8,7 @@
   import Breadcrumb from './lib/components/Breadcrumb.svelte';
   import ProjectsView from './lib/components/ProjectsView.svelte';
   import ProjectWorkspaceView from './lib/components/ProjectWorkspaceView.svelte';
+  import ProjectRepairHubView from './lib/components/ProjectRepairHubView.svelte';
   import EngineManagerView from './lib/components/EngineManagerView.svelte';
   import SettingsView from './lib/components/SettingsView.svelte';
 
@@ -17,7 +18,7 @@
   import Toast from './lib/components/Toast.svelte';
 
   let activeTab: 'projects' | 'engines' | 'settings' = 'projects';
-  let projectsSubView: 'list' | 'workspace' = 'list';
+  let projectsSubView: 'list' | 'workspace' | 'repair' = 'list';
 
   let showNewProjectModal = false;
   let showOpenProjectModal = false;
@@ -46,8 +47,24 @@
     projectsSubView = 'list';
   }
 
+  function handleBackToWorkspace() {
+    projectsSubView = 'workspace';
+  }
+
+  function handleOpenRepairHub() {
+    activeTab = 'projects';
+    projectsSubView = 'repair';
+  }
+
   $: breadcrumbItems = (() => {
     if (activeTab === 'projects') {
+      if (projectsSubView === 'repair' && $projectStore.current) {
+        return [
+          { label: 'Projects', onClick: () => (projectsSubView = 'list') },
+          { label: $projectStore.current.name, onClick: () => (projectsSubView = 'workspace') },
+          { label: 'Maintenance & Repair Hub' },
+        ];
+      }
       if (projectsSubView === 'workspace' && $projectStore.current) {
         return [
           { label: 'Projects', onClick: () => (projectsSubView = 'list') },
@@ -60,6 +77,22 @@
     } else {
       return [{ label: 'Settings' }];
     }
+  })();
+
+  $: backHandler = (() => {
+    if (activeTab === 'projects') {
+      if (projectsSubView === 'repair') return handleBackToWorkspace;
+      if (projectsSubView === 'workspace') return handleBackToProjectsList;
+    }
+    return null;
+  })();
+
+  $: backLabel = (() => {
+    if (activeTab === 'projects') {
+      if (projectsSubView === 'repair') return 'Workspace';
+      if (projectsSubView === 'workspace') return 'Projects';
+    }
+    return 'Back';
   })();
 </script>
 
@@ -76,16 +109,21 @@
     <!-- Unified Top Breadcrumb Header -->
     <Breadcrumb
       items={breadcrumbItems}
-      onBack={activeTab === 'projects' && projectsSubView === 'workspace' ? handleBackToProjectsList : null}
-      backLabel="Projects"
-      showPlayButton={activeTab === 'projects' && projectsSubView === 'workspace'}
+      onBack={backHandler}
+      {backLabel}
+      showPlayButton={activeTab === 'projects' && (projectsSubView === 'workspace' || projectsSubView === 'repair')}
     />
 
     <!-- Main Content Tab Router -->
     <main class="flex-1 overflow-y-auto">
       {#if activeTab === 'projects'}
-        {#if projectsSubView === 'workspace' && $projectStore.current}
-          <ProjectWorkspaceView onBackToProjects={handleBackToProjectsList} />
+        {#if projectsSubView === 'repair' && $projectStore.current}
+          <ProjectRepairHubView onBackToWorkspace={handleBackToWorkspace} />
+        {:else if projectsSubView === 'workspace' && $projectStore.current}
+          <ProjectWorkspaceView
+            onBackToProjects={handleBackToProjectsList}
+            onOpenRepairHub={handleOpenRepairHub}
+          />
         {:else}
           <ProjectsView
             onNewProject={() => (showNewProjectModal = true)}
@@ -116,7 +154,7 @@
   {/if}
 
   <!-- Crash Diagnostic Modal Alert -->
-  <CrashDiagnosticModal />
+  <CrashDiagnosticModal onOpenRepairHub={handleOpenRepairHub} />
 
   <!-- Toast Notification Overlay -->
   <Toast />

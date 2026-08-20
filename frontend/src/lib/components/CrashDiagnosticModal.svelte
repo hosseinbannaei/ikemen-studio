@@ -1,6 +1,5 @@
 <script lang="ts">
   import { projectStore } from '../stores/projectStore';
-  import type { VerificationReport } from '../types';
   import {
     AlertTriangle,
     Wrench,
@@ -10,16 +9,27 @@
     Play,
     Loader2,
     FileText,
-    ExternalLink,
+    Sliders,
+    Sparkles,
   } from 'lucide-svelte';
 
-  let verificationResult: VerificationReport | null = null;
-  let runningRepair = false;
+  export let onOpenRepairHub: () => void;
 
-  async function handleRepair() {
-    runningRepair = true;
-    verificationResult = await projectStore.verifyAndRepair();
-    runningRepair = false;
+  let fixingConfig = false;
+  let configFixed = false;
+
+  async function handleQuickFixConfig() {
+    fixingConfig = true;
+    const ok = await projectStore.repairConfig();
+    fixingConfig = false;
+    if (ok) {
+      configFixed = true;
+    }
+  }
+
+  function handleOpenHub() {
+    projectStore.dismissCrash();
+    onOpenRepairHub();
   }
 
   function handleRelaunch() {
@@ -66,33 +76,23 @@
           </div>
         {/if}
 
-        <!-- Steam-like Repair Recommendation -->
-        <div class="p-4 rounded-xl bg-dark-900/60 border border-dark-600/60 space-y-2">
+        <!-- Diagnostic Hint & Action Options -->
+        <div class="p-4 rounded-xl bg-dark-900/60 border border-dark-600/60 space-y-3">
           <div class="flex items-start gap-2.5">
             <Wrench class="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" />
             <div class="text-xs text-slate-300 leading-relaxed">
-              <strong class="text-slate-100 font-semibold">Recommended Fix:</strong> Running
-              <span class="text-indigo-300 font-bold">"Verify & Repair Files"</span> scans your project against the engine repository and automatically restores any missing scripts, shaders, or library files (similar to Steam game file verification).
+              <strong class="text-slate-100 font-semibold">Recommended Troubleshooting:</strong> Use the
+              <span class="text-indigo-300 font-bold">Maintenance & Repair Hub</span> to fix invalid render modes, update legacy ZSS syntax in stock characters (e.g. <code class="text-purple-300">kfm_zss</code>), or reset configuration.
             </div>
           </div>
-        </div>
 
-        <!-- Verification Results (if repair was run) -->
-        {#if verificationResult}
-          <div class="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/40 space-y-2">
-            <div class="flex items-center gap-2 text-xs font-bold text-emerald-300">
+          {#if configFixed}
+            <div class="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/30 flex items-center gap-2 text-xs text-emerald-300 font-medium">
               <CheckCircle2 class="w-4 h-4 text-emerald-400" />
-              <span>Verification Completed Successfully</span>
+              <span>Configuration repaired! Legacy RenderMode and display keys normalized.</span>
             </div>
-            <div class="text-xs text-slate-300 font-mono">
-              {#if verificationResult.repairedCount > 0}
-                Restored <strong class="text-emerald-400">{verificationResult.repairedCount} missing file(s)</strong> out of {verificationResult.totalChecked} checked.
-              {:else}
-                All {verificationResult.totalChecked} engine runtime files are in place and intact.
-              {/if}
-            </div>
-          </div>
-        {/if}
+          {/if}
+        </div>
 
         <!-- Logs Directory Note -->
         <div class="text-[11px] text-slate-400 flex items-center justify-between">
@@ -119,31 +119,39 @@
         </button>
 
         <div class="flex items-center gap-2.5">
-          {#if verificationResult}
-            <button
-              type="button"
-              class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/30 transition"
-              on:click={handleRelaunch}
-            >
-              <Play class="w-3.5 h-3.5 fill-current" />
-              <span>Re-Launch Game</span>
-            </button>
-          {:else}
-            <button
-              type="button"
-              disabled={runningRepair}
-              class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-indigo-600/30 transition"
-              on:click={handleRepair}
-            >
-              {#if runningRepair}
-                <Loader2 class="w-3.5 h-3.5 animate-spin" />
-                <span>Verifying & Repairing...</span>
-              {:else}
-                <Wrench class="w-3.5 h-3.5" />
-                <span>Verify & Repair Now</span>
-              {/if}
-            </button>
-          {/if}
+          <button
+            type="button"
+            disabled={fixingConfig}
+            class="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-600/90 hover:bg-amber-500 text-white text-xs font-semibold shadow-sm transition"
+            on:click={handleQuickFixConfig}
+            title="Auto-fix RenderMode and invalid config parameters"
+          >
+            {#if fixingConfig}
+              <Loader2 class="w-3.5 h-3.5 animate-spin" />
+              <span>Fixing...</span>
+            {:else}
+              <Sliders class="w-3.5 h-3.5" />
+              <span>Fix Config</span>
+            {/if}
+          </button>
+
+          <button
+            type="button"
+            class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/30 transition"
+            on:click={handleOpenHub}
+          >
+            <Wrench class="w-3.5 h-3.5" />
+            <span>Open Repair Hub</span>
+          </button>
+
+          <button
+            type="button"
+            class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/30 transition"
+            on:click={handleRelaunch}
+          >
+            <Play class="w-3.5 h-3.5 fill-current" />
+            <span>Re-Launch</span>
+          </button>
         </div>
       </div>
     </div>

@@ -7,6 +7,9 @@ import type {
   ExistingGameInspection,
   EngineBackupInfo,
   ImportOptions,
+  ProjectDiffSummary,
+  AssetSyncOptions,
+  ConfigInspectionResult,
 } from '../types';
 import {
   CreateProject,
@@ -30,6 +33,12 @@ import {
   GetGameConfig,
   SaveGameConfig,
   RemoveRecentProject,
+  InspectProjectDifferences,
+  SyncProjectAssets,
+  InspectGameConfig,
+  RepairGameConfig,
+  ResetGameConfig,
+  GetProjectLogs,
 } from '../../../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
 import { toastStore } from './toastStore';
@@ -490,6 +499,112 @@ function createProjectStore() {
     }
   }
 
+  async function inspectDiff(projectDir?: string): Promise<ProjectDiffSummary | null> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return null;
+
+    try {
+      const diff = await InspectProjectDifferences(targetPath);
+      return diff as any;
+    } catch (err: any) {
+      console.error('Diff inspection error:', err);
+      return null;
+    }
+  }
+
+  async function syncAssets(opts: AssetSyncOptions): Promise<VerificationReport | null> {
+    try {
+      const report = await SyncProjectAssets(opts as any);
+      toastStore.success('Asset Sync Complete', `Updated ${report.repairedCount} component(s)`);
+      return report as any;
+    } catch (err: any) {
+      toastStore.error('Sync Error', err?.message || 'Failed to sync assets');
+      return null;
+    }
+  }
+
+  async function inspectConfig(projectDir?: string): Promise<ConfigInspectionResult | null> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return null;
+
+    try {
+      const res = await InspectGameConfig(targetPath);
+      return res as any;
+    } catch (err: any) {
+      console.error('Config inspection error:', err);
+      return null;
+    }
+  }
+
+  async function repairConfig(projectDir?: string): Promise<boolean> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return false;
+
+    try {
+      await RepairGameConfig(targetPath);
+      toastStore.success('Config Repaired', 'Fixed invalid RenderMode and normalized keys in save/config.ini');
+      return true;
+    } catch (err: any) {
+      toastStore.error('Config Repair Failed', err?.message || 'Could not repair config.ini');
+      return false;
+    }
+  }
+
+  async function resetConfig(projectDir?: string): Promise<boolean> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return false;
+
+    try {
+      await ResetGameConfig(targetPath);
+      toastStore.success('Config Reset', 'Restored save/config.ini to clean engine defaults');
+      return true;
+    } catch (err: any) {
+      toastStore.error('Config Reset Failed', err?.message || 'Could not reset config.ini');
+      return false;
+    }
+  }
+
+  async function getLogs(projectDir?: string): Promise<string> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return 'No project selected';
+
+    try {
+      return await GetProjectLogs(targetPath);
+    } catch (err) {
+      return 'Error loading log file.';
+    }
+  }
+
   async function openLogs(projectDir?: string): Promise<void> {
     let targetPath = projectDir || '';
     if (!targetPath) {
@@ -535,6 +650,12 @@ function createProjectStore() {
     saveGameConfig,
     verifyAndRepair,
     verifyAndRepairWithMode,
+    inspectDiff,
+    syncAssets,
+    inspectConfig,
+    repairConfig,
+    resetConfig,
+    getLogs,
     openLogs,
     dismissCrash,
   };

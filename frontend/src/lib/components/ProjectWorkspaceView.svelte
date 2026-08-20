@@ -34,6 +34,7 @@
   } from 'lucide-svelte';
 
   export let onBackToProjects: () => void;
+  export let onOpenRepairHub: () => void;
 
   let showVerifyOptionsModal = false;
   let showVerifyReportModal = false;
@@ -57,7 +58,7 @@
   ];
 
   function handleVerifyClick() {
-    showVerifyOptionsModal = true;
+    onOpenRepairHub();
   }
 
   function handleReportReceived(report: VerificationReport) {

@@ -120,3 +120,45 @@ export interface ToastMessage {
   message?: string;
   duration?: number;
 }
+
+export interface ConfigIssue {
+  key: string;
+  currentValue: string;
+  suggestedValue: string;
+  severity: 'error' | 'warning' | 'info';
+  description: string;
+}
+
+export interface ConfigInspectionResult {
+  isValid: boolean;
+  hasLegacyRenderMode: boolean;
+  issues: ConfigIssue[];
+  totalKeys: number;
+  configPath: string;
+}
+
+export interface CategoryDiff {
+  category: string;
+  title: string;
+  description: string;
+  itemCount: number;
+  status: 'outdated' | 'missing' | 'clean' | 'custom';
+  files: string[];
+}
+
+export interface ProjectDiffSummary {
+  categories: CategoryDiff[];
+  totalDiscrepancies: number;
+  engineVersion: string;
+}
+
+export interface AssetSyncOptions {
+  projectDir: string;
+  engineDir?: string;
+  syncStockChars?: boolean;
+  syncStockStages?: boolean;
+  syncScreenpack?: boolean;
+  syncFonts?: boolean;
+  syncRuntime?: boolean;
+  resetConfig?: boolean;
+}
