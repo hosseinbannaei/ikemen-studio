@@ -289,6 +289,56 @@ func TestIngestRecursiveFolderWithArchives(t *testing.T) {
 	}
 }
 
+func TestIngestStoryboardSkipping(t *testing.T) {
+	vaultDir, err := os.MkdirTemp("", "vault_sb_test_*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(vaultDir)
+
+	manifest := &VaultManifest{
+		Version: "1.0",
+		ID:      "vault-sb",
+		Name:    "Storyboard Skip Test Vault",
+		Assets:  make(map[string]VaultAsset),
+	}
+	_ = SaveManifest(vaultDir, manifest)
+
+	// Create a zip with kfm.def AND ending.def AND intro.def
+	zipPath := filepath.Join(vaultDir, "kfm_with_storyboard.zip")
+	zipFile, _ := os.Create(zipPath)
+	zw := zip.NewWriter(zipFile)
+
+	// ending.def is a storyboard
+	f1, _ := zw.Create("kfm/ending.def")
+	_, _ = f1.Write([]byte("[SceneDef]\nspr = ending.sff\n[Scene 0]\ntime = 100"))
+
+	// intro.def is a storyboard
+	f2, _ := zw.Create("kfm/intro.def")
+	_, _ = f2.Write([]byte("[SceneDef]\nspr = intro.sff\n[Scene 0]\ntime = 100"))
+
+	// kfm.def is the real character
+	f3, _ := zw.Create("kfm/kfm.def")
+	_, _ = f3.Write([]byte("[Info]\nname = kfm\ndisplayname = Kung Fu Man\nauthor = Elecbyte\n[Files]\ncns = kfm.cns\ncmd = kfm.cmd"))
+
+	_ = zw.Close()
+	_ = zipFile.Close()
+
+	res, err := IngestPath(vaultDir, zipPath, "kfm_archive")
+	if err != nil {
+		t.Fatalf("IngestPath failed: %v", err)
+	}
+
+	if res.ImportedCount != 1 {
+		t.Fatalf("Expected 1 imported character (ignoring storyboards), got %d", res.ImportedCount)
+	}
+
+	if res.DetectedAssets[0].DisplayName != "Kung Fu Man" {
+		t.Errorf("Expected asset name 'Kung Fu Man', got '%s'", res.DetectedAssets[0].DisplayName)
+	}
+}
+
+
 func containsSubstring(str, substr string) bool {
 	return filepath.Clean(str) != "" && len(str) >= len(substr) && (str == substr || len(str) > 0 && len(substr) > 0 && len(str) >= len(substr) && (stringContains(str, substr)))
 }

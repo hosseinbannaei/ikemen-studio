@@ -192,7 +192,13 @@ func IngestMultiple(vaultPath string, srcPaths []string, sourcePackage string) (
 // ScanStagingDir recursively looks for .def files and isolates the enclosing asset roots.
 func ScanStagingDir(stagingDir string) ([]DiscoveredAsset, error) {
 	var discovered []DiscoveredAsset
-	processedRoots := make(map[string]bool)
+
+	// 1. Group all .def files by their enclosing directory
+	type candidateDef struct {
+		path    string
+		defInfo *DefInfo
+	}
+	folderDefs := make(map[string][]candidateDef)
 
 	err := filepath.Walk(stagingDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
@@ -200,47 +206,104 @@ func ScanStagingDir(stagingDir string) ([]DiscoveredAsset, error) {
 		}
 
 		if strings.ToLower(filepath.Ext(path)) == ".def" {
-			baseName := strings.ToLower(filepath.Base(path))
-			if baseName == "select.def" || baseName == "system.def" {
-				// Potential motif
-			}
-
 			defInfo, parseErr := ParseDefFile(path)
-			if parseErr != nil || defInfo == nil {
-				return nil
+			if parseErr == nil && defInfo != nil {
+				folderRoot := filepath.Dir(path)
+				folderDefs[folderRoot] = append(folderDefs[folderRoot], candidateDef{
+					path:    path,
+					defInfo: defInfo,
+				})
 			}
-
-			folderRoot := filepath.Dir(path)
-			if processedRoots[folderRoot] {
-				return nil
-			}
-
-			folderName := filepath.Base(folderRoot)
-			if folderRoot == stagingDir || strings.HasPrefix(folderName, "archive_") {
-				folderName = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
-			}
-
-			urls, notes := ScanFolderReadmes(folderRoot)
-			sizeBytes := calculateDirSize(folderRoot)
-
-			discovered = append(discovered, DiscoveredAsset{
-				Category:       defInfo.Category,
-				FolderRoot:     folderRoot,
-				DefPath:        path,
-				DefInfo:        defInfo,
-				FolderName:     folderName,
-				ScrapedURLs:    urls,
-				ScrapedNotes:   notes,
-				TotalSizeBytes: sizeBytes,
-			})
-
-			processedRoots[folderRoot] = true
 		}
 		return nil
 	})
 
-	return discovered, err
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. For each directory root, select the single best primary .def file
+	for folderRoot, candidates := range folderDefs {
+		folderName := filepath.Base(folderRoot)
+		if folderRoot == stagingDir || strings.HasPrefix(folderName, "archive_") {
+			if len(candidates) > 0 {
+				folderName = strings.TrimSuffix(filepath.Base(candidates[0].path), filepath.Ext(candidates[0].path))
+			}
+		}
+
+		var bestDef *candidateDef
+		bestScore := -999
+
+		for _, c := range candidates {
+			score := scoreDefCandidate(c.path, c.defInfo, folderName)
+			if score > bestScore {
+				bestScore = score
+				candCopy := c
+				bestDef = &candCopy
+			}
+		}
+
+		// If best score is still negative (e.g. only standalone storyboard cutscenes), skip
+		if bestDef == nil || (bestScore < 0 && !bestDef.defInfo.IsLifebar && bestDef.defInfo.Category != CategoryStage) {
+			continue
+		}
+
+		urls, notes := ScanFolderReadmes(folderRoot)
+		sizeBytes := calculateDirSize(folderRoot)
+
+		discovered = append(discovered, DiscoveredAsset{
+			Category:       bestDef.defInfo.Category,
+			FolderRoot:     folderRoot,
+			DefPath:        bestDef.path,
+			DefInfo:        bestDef.defInfo,
+			FolderName:     folderName,
+			ScrapedURLs:    urls,
+			ScrapedNotes:   notes,
+			TotalSizeBytes: sizeBytes,
+		})
+	}
+
+	return discovered, nil
 }
+
+func scoreDefCandidate(defPath string, info *DefInfo, folderName string) int {
+	base := strings.ToLower(strings.TrimSuffix(filepath.Base(defPath), filepath.Ext(defPath)))
+
+	// Storyboards (ending.def, intro.def, credits.def) must NOT be chosen as character defs
+	if info.IsStoryboard || base == "ending" || base == "intro" || base == "credits" || base == "logo" || base == "cutscene" {
+		return -100
+	}
+
+	score := 0
+
+	// Match folder name (e.g. kfm.def inside kfm/)
+	if strings.EqualFold(base, folderName) {
+		score += 60
+	}
+
+	if info.HasFilesBlock {
+		score += 30
+	}
+
+	if info.SpriteFile != "" {
+		score += 20
+	}
+
+	if info.IsLifebar {
+		score += 40
+	}
+
+	if info.Category == CategoryStage {
+		score += 40
+	}
+
+	if info.DisplayName != "" && !strings.EqualFold(info.DisplayName, "ending") && !strings.EqualFold(info.DisplayName, "intro") {
+		score += 10
+	}
+
+	return score
+}
+
 
 func isArchive(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))

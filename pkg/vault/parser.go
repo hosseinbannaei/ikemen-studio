@@ -27,9 +27,12 @@ type DefInfo struct {
 	SoundFile     string
 	FoundURLs     []string
 	Comments      []string
+	IsStoryboard  bool // e.g. ending.def, intro.def (contains [SceneDef])
+	IsLifebar     bool // e.g. fight.def, lifebar.def (contains [Lifebar] or [Round])
+	HasFilesBlock bool // true if [Files] section with cns/cmd/sprite exists
 }
 
-// ParseDefFile reads and extracts metadata from a character or stage .def file.
+// ParseDefFile reads and extracts metadata from a character, stage, lifebar, or motif .def file.
 func ParseDefFile(defPath string) (*DefInfo, error) {
 	file, err := os.Open(defPath)
 	if err != nil {
@@ -47,6 +50,14 @@ func ParseDefFile(defPath string) (*DefInfo, error) {
 	currentSection := ""
 	hasStageInfo := false
 	hasTitleInfo := false
+	hasLifebarInfo := false
+	hasSceneDef := false
+	hasFiles := false
+
+	baseName := strings.ToLower(filepath.Base(defPath))
+	if baseName == "fight.def" || baseName == "lifebar.def" {
+		hasLifebarInfo = true
+	}
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -78,6 +89,17 @@ func ParseDefFile(defPath string) (*DefInfo, error) {
 			if strings.HasPrefix(currentSection, "title info") || strings.HasPrefix(currentSection, "select info") {
 				hasTitleInfo = true
 			}
+			if strings.HasPrefix(currentSection, "lifebar") || strings.HasPrefix(currentSection, "simul lifebar") ||
+				strings.HasPrefix(currentSection, "tag lifebar") || strings.HasPrefix(currentSection, "round") ||
+				strings.HasPrefix(currentSection, "winicon") || strings.HasPrefix(currentSection, "combo") {
+				hasLifebarInfo = true
+			}
+			if strings.HasPrefix(currentSection, "scenedef") || strings.HasPrefix(currentSection, "scene ") || currentSection == "scene" {
+				hasSceneDef = true
+			}
+			if currentSection == "files" {
+				hasFiles = true
+			}
 			continue
 		}
 
@@ -102,6 +124,7 @@ func ParseDefFile(defPath string) (*DefInfo, error) {
 					info.IkemenVersion = val
 				}
 			case "files":
+				hasFiles = true
 				switch rawKey {
 				case "sprite", "sff":
 					info.SpriteFile = val
@@ -128,9 +151,13 @@ func ParseDefFile(defPath string) (*DefInfo, error) {
 		}
 	}
 
+	info.IsStoryboard = hasSceneDef && !hasFiles && !hasStageInfo
+	info.IsLifebar = hasLifebarInfo
+	info.HasFilesBlock = hasFiles
+
 	if hasStageInfo {
 		info.Category = CategoryStage
-	} else if hasTitleInfo {
+	} else if hasTitleInfo || hasLifebarInfo {
 		info.Category = CategoryMotif
 	}
 

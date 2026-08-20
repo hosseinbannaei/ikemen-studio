@@ -96,7 +96,7 @@
     { id: 'all', label: 'All Items' },
     { id: 'fighters', label: 'Fighters' },
     { id: 'stages', label: 'Stages' },
-    { id: 'motifs', label: 'Screenpacks' },
+    { id: 'motifs', label: 'Screenpacks & Lifebars' },
     { id: 'sounds', label: 'Sounds & Audio' },
   ];
 </script>
