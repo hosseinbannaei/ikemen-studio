@@ -112,3 +112,39 @@ export function UpdateVaultAsset(arg1:string,arg2:string,arg3:vault.AssetMetadat
 export function VerifyAndRepairProject(arg1:string):Promise<project.VerificationReport>;
 
 export function VerifyAndRepairProjectWithMode(arg1:string,arg2:boolean):Promise<project.VerificationReport>;
+
+
+export function GetProjectStages(arg1:string):Promise<Array<any>>;
+
+export function ToggleStageExtraStage(arg1:string,arg2:string,arg3:boolean):Promise<void>;
+
+export function SetFighterHomeStage(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function DeleteProjectStage(arg1:string,arg2:string):Promise<void>;
+
+export function GetProjectMotifs(arg1:string):Promise<Array<any>>;
+
+export function SetActiveMotif(arg1:string,arg2:string):Promise<void>;
+
+export function GetProjectLifebars(arg1:string):Promise<Array<any>>;
+
+export function SetActiveLifebar(arg1:string,arg2:string):Promise<void>;
+
+export function GetProjectAudio(arg1:string):Promise<Array<any>>;
+
+export function SetSystemBGM(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function DeleteProjectAudio(arg1:string,arg2:string):Promise<void>;
+
+export function GetProjectFonts(arg1:string):Promise<Array<any>>;
+
+export function SetSystemFontMapping(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
+
+export function GetProjectStoryboards(arg1:string):Promise<Array<any>>;
+
+export function SetSystemStoryboard(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function SelectAudioFileDialog():Promise<string>;
+
+export function SelectFontFileDialog():Promise<string>;
+

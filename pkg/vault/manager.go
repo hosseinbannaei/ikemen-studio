@@ -58,7 +58,10 @@ func (vm *VaultManager) EnsureDefaultVault() (*VaultInfo, error) {
 		_ = os.MkdirAll(filepath.Join(defaultVaultPath, "chars"), 0755)
 		_ = os.MkdirAll(filepath.Join(defaultVaultPath, "stages"), 0755)
 		_ = os.MkdirAll(filepath.Join(defaultVaultPath, "motifs"), 0755)
+		_ = os.MkdirAll(filepath.Join(defaultVaultPath, "lifebars"), 0755)
 		_ = os.MkdirAll(filepath.Join(defaultVaultPath, "sound"), 0755)
+		_ = os.MkdirAll(filepath.Join(defaultVaultPath, "fonts"), 0755)
+		_ = os.MkdirAll(filepath.Join(defaultVaultPath, "storyboards"), 0755)
 
 		manifest = &VaultManifest{
 			Version:     CurrentManifestVersion,
@@ -107,26 +110,34 @@ func (vm *VaultManager) GetVaults() ([]VaultInfo, error) {
 	defaultVaultPath := filepath.Clean(filepath.Join(defaultBase, "default"))
 
 	var vaults []VaultInfo
+	var validPaths []string
+	seenPaths := make(map[string]bool)
+	seenIDs := make(map[string]bool)
+
 	for _, p := range settings.RegisteredVaults {
 		cleanP := filepath.Clean(p)
+		if seenPaths[strings.ToLower(cleanP)] {
+			continue
+		}
+
+		if _, statErr := os.Stat(cleanP); statErr != nil {
+			continue // Path no longer exists
+		}
+
 		manifest, err := LoadManifest(cleanP)
 		if err != nil {
-			continue // Skip invalid/deleted paths
+			continue // Skip invalid manifest
 		}
 
-		manifestChanged := false
-		for key, asset := range manifest.Assets {
-			assetDiskPath := filepath.Join(cleanP, asset.Key)
-			if _, err := os.Stat(assetDiskPath); os.IsNotExist(err) {
-				delete(manifest.Assets, key)
-				manifestChanged = true
-			}
-		}
-		if manifestChanged {
-			_ = SaveManifest(cleanP, manifest)
+		isDef := strings.EqualFold(cleanP, defaultVaultPath)
+		if !isDef && (seenIDs[manifest.ID] || manifest.ID == "vault-default") {
+			// If not the real default vault on disk, skip stale vault-default test duplicates
+			continue
 		}
 
-		isDef := strings.EqualFold(cleanP, defaultVaultPath) || manifest.ID == "vault-default"
+		seenPaths[strings.ToLower(cleanP)] = true
+		seenIDs[manifest.ID] = true
+		validPaths = append(validPaths, cleanP)
 
 		vaults = append(vaults, VaultInfo{
 			ID:          manifest.ID,
@@ -140,7 +151,15 @@ func (vm *VaultManager) GetVaults() ([]VaultInfo, error) {
 		})
 	}
 
+
+	// Update settings if any dead or duplicate paths were removed
+	if len(validPaths) != len(settings.RegisteredVaults) {
+		settings.RegisteredVaults = validPaths
+		_ = config.SaveSettings(settings)
+	}
+
 	return vaults, nil
+
 }
 
 // GetVault finds a vault by ID and returns its metadata and path.
@@ -308,9 +327,13 @@ func (vm *VaultManager) GetVaultAssets(vaultID string) ([]VaultAsset, error) {
 	}
 
 	for _, v := range vaults {
-		if vaultID != "" && vaultID != "all" && v.ID != vaultID {
+		if vaultID == "vault-default" && !v.IsDefault && v.ID != "vault-default" {
 			continue
 		}
+		if vaultID != "" && vaultID != "all" && vaultID != "vault-default" && v.ID != vaultID {
+			continue
+		}
+
 
 		manifest, err := LoadManifest(v.Path)
 		if err != nil {
@@ -493,9 +516,6 @@ func (vm *VaultManager) IngestMultiple(vaultID string, srcPaths []string, target
 
 // CleanAndRepairVault scans, diagnoses, deduplicates, and repairs an existing vault.
 func (vm *VaultManager) CleanAndRepairVault(vaultID string) (*VaultCleanReport, error) {
-	vm.mu.Lock()
-	defer vm.mu.Unlock()
-
 	if vaultID == "" || vaultID == "all" {
 		vaultID = "vault-default"
 	}
@@ -505,10 +525,14 @@ func (vm *VaultManager) CleanAndRepairVault(vaultID string) (*VaultCleanReport, 
 		return nil, err
 	}
 
+	vm.mu.Lock()
+	defer vm.mu.Unlock()
+
 	manifest, err := LoadManifest(vaultPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load vault manifest: %w", err)
 	}
+
 
 	report := &VaultCleanReport{
 		VaultID: vaultID,
@@ -684,7 +708,7 @@ func (vm *VaultManager) CleanAndRepairVault(vaultID string) (*VaultCleanReport, 
 	}
 
 	// Re-scan categories to pick up any valid unindexed disk assets
-	for _, catDir := range []string{"chars", "stages", "motifs", "sound"} {
+	for _, catDir := range []string{"chars", "stages", "motifs", "lifebars", "sound", "fonts", "storyboards"} {
 		catPath := filepath.Join(vaultPath, catDir)
 		catEntries, err := os.ReadDir(catPath)
 		if err != nil {
@@ -719,12 +743,19 @@ func (vm *VaultManager) CleanAndRepairVault(vaultID string) (*VaultCleanReport, 
 					defInfo, _ := ParseDefFile(primaryDef)
 					if defInfo != nil {
 						cat := CategoryFighter
-						if catDir == "stages" {
+						switch catDir {
+						case "stages":
 							cat = CategoryStage
-						} else if catDir == "motifs" {
+						case "motifs":
 							cat = CategoryMotif
-						} else if catDir == "sound" {
+						case "lifebars":
+							cat = CategoryLifebar
+						case "sound":
 							cat = CategorySound
+						case "fonts":
+							cat = CategoryFont
+						case "storyboards":
+							cat = CategoryStoryboard
 						}
 
 						sffPath := ""

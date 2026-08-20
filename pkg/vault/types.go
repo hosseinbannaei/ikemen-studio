@@ -6,10 +6,13 @@ import "time"
 type Category string
 
 const (
-	CategoryFighter Category = "fighters"
-	CategoryStage   Category = "stages"
-	CategoryMotif   Category = "motifs"
-	CategorySound   Category = "sounds"
+	CategoryFighter    Category = "fighters"
+	CategoryStage      Category = "stages"
+	CategoryMotif      Category = "motifs"
+	CategoryLifebar    Category = "lifebars"
+	CategorySound      Category = "sounds"
+	CategoryFont       Category = "fonts"
+	CategoryStoryboard Category = "storyboards"
 )
 
 // LinkStrategy defines how an asset is connected into a project.

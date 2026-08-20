@@ -25,6 +25,19 @@
   let selectedKeys: string[] = [];
   let isAdding = false;
 
+  function formatCategoryLabel(cat: AssetCategory): string {
+    switch (cat) {
+      case 'fighters': return 'Fighters';
+      case 'stages': return 'Stages';
+      case 'motifs': return 'Screenpacks & Motifs';
+      case 'lifebars': return 'Lifebars & Fight HUD';
+      case 'sounds': return 'Sound & Music';
+      case 'fonts': return 'Fonts';
+      case 'storyboards': return 'Storyboards & Cutscenes';
+      default: return 'Assets';
+    }
+  }
+
   onMount(async () => {
     await vaultStore.loadVaults();
     await vaultStore.loadAssets('all');
@@ -72,8 +85,8 @@
             <Package class="w-5 h-5" />
           </div>
           <div>
-            <h3 class="font-bold text-slate-100 text-base">Add {targetCategory === 'fighters' ? 'Fighters' : 'Stages'} from Vault</h3>
-            <p class="text-xs text-slate-400">Select assets from your vaults to link into this project's roster</p>
+            <h3 class="font-bold text-slate-100 text-base">Add {formatCategoryLabel(targetCategory)} from Vault</h3>
+            <p class="text-xs text-slate-400">Select assets from your vaults to link into this project</p>
           </div>
         </div>
         <button

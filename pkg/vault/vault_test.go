@@ -468,7 +468,7 @@ func TestCleanAndRepairVault(t *testing.T) {
 
 	manifest := &VaultManifest{
 		Version: "1.0",
-		ID:      "vault-default",
+		ID:      "vault-repair-test",
 		Name:    "Repair Vault",
 		Assets: map[string]VaultAsset{
 			"chars/kfm": {
@@ -498,7 +498,8 @@ func TestCleanAndRepairVault(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report, err := vm.CleanAndRepairVault("vault-default")
+	report, err := vm.CleanAndRepairVault("vault-repair-test")
+
 	if err != nil {
 		t.Fatalf("CleanAndRepairVault failed: %v", err)
 	}

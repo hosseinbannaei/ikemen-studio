@@ -44,11 +44,20 @@
     Cpu,
     Layers,
     FolderOpen,
+    Palette,
+    Swords,
+    Film,
   } from 'lucide-svelte';
 
   export let onBackToProjects: () => void;
   export let onOpenRepairHub: () => void;
   export let onOpenRosterEditor: () => void;
+  export let onOpenStages: () => void;
+  export let onOpenMotifs: () => void;
+  export let onOpenLifebars: () => void;
+  export let onOpenSound: () => void;
+  export let onOpenFonts: () => void;
+  export let onOpenStoryboards: () => void;
 
   let showVerifyOptionsModal = false;
   let showVerifyReportModal = false;
@@ -57,7 +66,7 @@
   let showEngineConfirmModal = false;
   let showRollbackModal = false;
   let showAddFromVaultModal = false;
-  let vaultTargetCategory: 'fighters' | 'stages' = 'fighters';
+  let vaultTargetCategory: 'fighters' | 'stages' | 'motifs' | 'lifebars' | 'sounds' | 'fonts' | 'storyboards' = 'fighters';
   let selectedBackupId = '';
   let pendingEngineVersion = '';
   let selectedEngineVersion = '';
@@ -78,7 +87,7 @@
   let verificationReport: VerificationReport | null = null;
   let isVerifying = false;
 
-  const folderShortcuts = [
+  $: folderShortcuts = [
     {
       label: 'Characters',
       subpath: 'chars',
@@ -87,6 +96,8 @@
       color: 'from-blue-500/20 to-cyan-500/20 text-cyan-400 border-cyan-500/30',
       category: 'fighters' as const,
       canAddVault: true,
+      onManage: onOpenRosterEditor,
+      manageLabel: 'Roster',
     },
     {
       label: 'Stages',
@@ -96,14 +107,19 @@
       color: 'from-emerald-500/20 to-teal-500/20 text-emerald-400 border-emerald-500/30',
       category: 'stages' as const,
       canAddVault: true,
+      onManage: onOpenStages,
+      manageLabel: 'Manage',
     },
     {
-      label: 'System Data',
+      label: 'System & Motifs',
       subpath: 'data',
-      icon: FileCode,
-      desc: 'select.def, system.def, motif & fonts',
-      color: 'from-amber-500/20 to-orange-500/20 text-amber-400 border-amber-500/30',
-      canAddVault: false,
+      icon: Palette,
+      desc: 'Screenpacks, motifs, lifebars & cutscenes',
+      color: 'from-indigo-500/20 to-purple-500/20 text-indigo-400 border-indigo-500/30',
+      category: 'motifs' as const,
+      canAddVault: true,
+      onManage: onOpenMotifs,
+      manageLabel: 'Motifs',
     },
     {
       label: 'Fonts',
@@ -111,7 +127,10 @@
       icon: Type,
       desc: 'Bitmap (.fnt) and TrueType (.ttf) fonts',
       color: 'from-purple-500/20 to-pink-500/20 text-purple-400 border-purple-500/30',
-      canAddVault: false,
+      category: 'fonts' as const,
+      canAddVault: true,
+      onManage: onOpenFonts,
+      manageLabel: 'Manage',
     },
     {
       label: 'Sound & Music',
@@ -119,7 +138,10 @@
       icon: Music,
       desc: 'BGM soundtracks, hits, announcer audio',
       color: 'from-rose-500/20 to-red-500/20 text-rose-400 border-rose-500/30',
-      canAddVault: false,
+      category: 'sounds' as const,
+      canAddVault: true,
+      onManage: onOpenSound,
+      manageLabel: 'Manage',
     },
   ];
 
@@ -155,7 +177,7 @@
     }
   }
 
-  function handleOpenVaultFor(cat: 'fighters' | 'stages') {
+  function handleOpenVaultFor(cat: 'fighters' | 'stages' | 'motifs' | 'lifebars' | 'sounds' | 'fonts' | 'storyboards') {
     vaultTargetCategory = cat;
     showAddFromVaultModal = true;
   }
@@ -541,11 +563,11 @@
     <div class="space-y-3">
       <div class="flex items-center justify-between px-1">
         <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Core Studio Workbenches</h2>
-        <span class="text-xs text-slate-500">Visual tools & maintenance suites</span>
+        <span class="text-xs text-slate-500">Full visual management suites for all Ikemen asset types</span>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Workbench 1: Roster Editor -->
+        <!-- 1: Roster Editor -->
         <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 hover:border-indigo-500/50 transition-all duration-200 flex flex-col justify-between group shadow-sm hover:shadow-indigo-950/20">
           <div class="space-y-3">
             <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center group-hover:scale-105 transition">
@@ -557,7 +579,7 @@
                 <span class="text-[10px] font-mono text-slate-500">select.def</span>
               </div>
               <p class="text-xs text-slate-400 mt-1 leading-relaxed">
-                Visual character grid & stage select screen manager with drag-and-drop.
+                Visual character grid, slot assignment, order, and extra stages manager.
               </p>
             </div>
           </div>
@@ -574,19 +596,19 @@
           </div>
         </div>
 
-        <!-- Workbench 2: Asset Vault Library -->
-        <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 hover:border-brand-500/50 transition-all duration-200 flex flex-col justify-between group shadow-sm hover:shadow-purple-950/20">
+        <!-- 2: Stages Manager -->
+        <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 hover:border-emerald-500/50 transition-all duration-200 flex flex-col justify-between group shadow-sm hover:shadow-emerald-950/20">
           <div class="space-y-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500/20 to-pink-500/20 text-brand-300 border border-brand-500/30 flex items-center justify-center group-hover:scale-105 transition">
-              <Sparkles class="w-5 h-5" />
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center group-hover:scale-105 transition">
+              <Mountain class="w-5 h-5" />
             </div>
             <div>
               <div class="flex items-center gap-2">
-                <h3 class="text-sm font-bold text-slate-100 group-hover:text-brand-300 transition">Asset Vault</h3>
-                <span class="text-[10px] font-semibold text-brand-400 bg-brand-500/10 px-1.5 py-0.5 rounded">Library</span>
+                <h3 class="text-sm font-bold text-slate-100 group-hover:text-emerald-300 transition">Stages Manager</h3>
+                <span class="text-[10px] font-mono text-slate-500">stages/</span>
               </div>
               <p class="text-xs text-slate-400 mt-1 leading-relaxed">
-                Link fighters & stages from your centralized vault library without duplicating disk space.
+                Arenas, ExtraStages registration, BGM assignments, and sparring match test.
               </p>
             </div>
           </div>
@@ -594,16 +616,161 @@
           <div class="pt-4 mt-4 border-t border-dark-600/50">
             <button
               type="button"
-              class="w-full py-2 px-3 rounded-xl bg-dark-700 hover:bg-dark-650 hover:border-brand-500/40 border border-dark-600 text-brand-300 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm"
-              on:click={() => handleOpenVaultFor('fighters')}
+              class="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow"
+              on:click={onOpenStages}
             >
-              <Plus class="w-3.5 h-3.5" />
-              <span>Link From Vault</span>
+              <span>Open Stage Manager</span>
+              <ArrowRight class="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
-        <!-- Workbench 3: Maintenance & Repair Hub -->
+        <!-- 3: Screenpacks & Motifs -->
+        <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 hover:border-purple-500/50 transition-all duration-200 flex flex-col justify-between group shadow-sm hover:shadow-purple-950/20">
+          <div class="space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center group-hover:scale-105 transition">
+              <Palette class="w-5 h-5" />
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-slate-100 group-hover:text-purple-300 transition">Screenpacks & Motifs</h3>
+                <span class="text-[10px] font-mono text-slate-500">system.def</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                Theme previews, select screen grid capacity, and 1-click active motif switcher.
+              </p>
+            </div>
+          </div>
+
+          <div class="pt-4 mt-4 border-t border-dark-600/50">
+            <button
+              type="button"
+              class="w-full py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow"
+              on:click={onOpenMotifs}
+            >
+              <span>Manage Motifs</span>
+              <ArrowRight class="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <!-- 4: Lifebars & Fight HUD -->
+        <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 hover:border-rose-500/50 transition-all duration-200 flex flex-col justify-between group shadow-sm hover:shadow-rose-950/20">
+          <div class="space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500/20 to-red-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center group-hover:scale-105 transition">
+              <Swords class="w-5 h-5" />
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-slate-100 group-hover:text-rose-300 transition">Lifebars & Fight HUD</h3>
+                <span class="text-[10px] font-mono text-slate-500">fight.def</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                Health bars, super gauge HUDs, round announcers, and active fight HUD switching.
+              </p>
+            </div>
+          </div>
+
+          <div class="pt-4 mt-4 border-t border-dark-600/50">
+            <button
+              type="button"
+              class="w-full py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow"
+              on:click={onOpenLifebars}
+            >
+              <span>Manage Lifebars</span>
+              <ArrowRight class="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <!-- 5: Sound & Music Library -->
+        <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 hover:border-rose-500/50 transition-all duration-200 flex flex-col justify-between group shadow-sm hover:shadow-rose-950/20">
+          <div class="space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500/20 to-orange-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center group-hover:scale-105 transition">
+              <Music class="w-5 h-5" />
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-slate-100 group-hover:text-rose-300 transition">Sound & Music</h3>
+                <span class="text-[10px] font-mono text-slate-500">sound/</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                Built-in BGM audio player and 1-click Title/Select/VS system music mapping.
+              </p>
+            </div>
+          </div>
+
+          <div class="pt-4 mt-4 border-t border-dark-600/50">
+            <button
+              type="button"
+              class="w-full py-2 px-3 rounded-xl bg-dark-700 hover:bg-dark-650 hover:border-rose-500/40 border border-dark-600 text-rose-300 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm"
+              on:click={onOpenSound}
+            >
+              <span>Open Sound Library</span>
+              <ArrowRight class="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <!-- 6: Fonts & Typography -->
+        <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 hover:border-purple-500/50 transition-all duration-200 flex flex-col justify-between group shadow-sm hover:shadow-purple-950/20">
+          <div class="space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center group-hover:scale-105 transition">
+              <Type class="w-5 h-5" />
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-slate-100 group-hover:text-purple-300 transition">Fonts & Typography</h3>
+                <span class="text-[10px] font-mono text-slate-500">font/</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                Specimen visualizer and font slot assignment for menu and fight displays.
+              </p>
+            </div>
+          </div>
+
+          <div class="pt-4 mt-4 border-t border-dark-600/50">
+            <button
+              type="button"
+              class="w-full py-2 px-3 rounded-xl bg-dark-700 hover:bg-dark-650 hover:border-purple-500/40 border border-dark-600 text-purple-300 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm"
+              on:click={onOpenFonts}
+            >
+              <span>Manage Fonts</span>
+              <ArrowRight class="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <!-- 7: Storyboards & Cutscenes -->
+        <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 hover:border-amber-500/50 transition-all duration-200 flex flex-col justify-between group shadow-sm hover:shadow-amber-950/20">
+          <div class="space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-yellow-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center group-hover:scale-105 transition">
+              <Film class="w-5 h-5" />
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-slate-100 group-hover:text-amber-300 transition">Storyboards</h3>
+                <span class="text-[10px] font-mono text-slate-500">data/*.def</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                Cinematic cutscenes, opening intros, ending sequences, and credits rolls.
+              </p>
+            </div>
+          </div>
+
+          <div class="pt-4 mt-4 border-t border-dark-600/50">
+            <button
+              type="button"
+              class="w-full py-2 px-3 rounded-xl bg-dark-700 hover:bg-dark-650 hover:border-amber-500/40 border border-dark-600 text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm"
+              on:click={onOpenStoryboards}
+            >
+              <span>Manage Storyboards</span>
+              <ArrowRight class="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <!-- 8: Maintenance & Repair Hub -->
         <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 hover:border-cyan-500/50 transition-all duration-200 flex flex-col justify-between group shadow-sm hover:shadow-cyan-950/20">
           <div class="space-y-3">
             <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center group-hover:scale-105 transition">
@@ -615,7 +782,7 @@
                 <span class="text-[10px] font-mono text-slate-500">Diagnostics</span>
               </div>
               <p class="text-xs text-slate-400 mt-1 leading-relaxed">
-                Fix OpenGL 3.3 configs, sync stock files, verify integrity, and inspect project diffs.
+                Fix OpenGL 3.3 configs, sync stock files, verify integrity, and inspect diffs.
               </p>
             </div>
           </div>
@@ -631,35 +798,6 @@
             </button>
           </div>
         </div>
-
-        <!-- Workbench 4: Engine Settings & Config -->
-        <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 hover:border-amber-500/50 transition-all duration-200 flex flex-col justify-between group shadow-sm hover:shadow-amber-950/20">
-          <div class="space-y-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center group-hover:scale-105 transition">
-              <Sliders class="w-5 h-5" />
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <h3 class="text-sm font-bold text-slate-100 group-hover:text-amber-300 transition">Game Settings</h3>
-                <span class="text-[10px] font-mono text-slate-500">config.ini</span>
-              </div>
-              <p class="text-xs text-slate-400 mt-1 leading-relaxed">
-                Configure resolution, window mode, shaders, sound volume, and controls.
-              </p>
-            </div>
-          </div>
-
-          <div class="pt-4 mt-4 border-t border-dark-600/50">
-            <button
-              type="button"
-              class="w-full py-2 px-3 rounded-xl bg-dark-700 hover:bg-dark-650 hover:border-amber-500/40 border border-dark-600 text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm"
-              on:click={() => (showGameConfigModal = true)}
-            >
-              <Sliders class="w-3.5 h-3.5" />
-              <span>Edit Config</span>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -667,7 +805,7 @@
     <div class="space-y-3">
       <div class="flex items-center justify-between px-1">
         <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Project Asset Directories</h2>
-        <span class="text-xs text-slate-500">Open on disk or import assets directly</span>
+        <span class="text-xs text-slate-500">Open on disk, manage directly, or link from Vault</span>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
@@ -678,17 +816,7 @@
             <div class="space-y-3">
               <div class="flex items-center justify-between">
                 <div class="w-9 h-9 rounded-xl bg-gradient-to-br {sc.color} border flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition">
-                  {#if sc.subpath === 'chars'}
-                    <Users class="w-4 h-4" />
-                  {:else if sc.subpath === 'stages'}
-                    <Mountain class="w-4 h-4" />
-                  {:else if sc.subpath === 'data'}
-                    <FileCode class="w-4 h-4" />
-                  {:else if sc.subpath === 'font'}
-                    <Type class="w-4 h-4" />
-                  {:else}
-                    <Music class="w-4 h-4" />
-                  {/if}
+                  <svelte:component this={sc.icon} class="w-4 h-4" />
                 </div>
                 <span class="font-mono text-[10px] text-slate-500 px-2 py-0.5 bg-dark-900 rounded-md border border-dark-700/50">
                   {sc.subpath}/
@@ -709,13 +837,23 @@
             <div class="flex items-center gap-1.5 pt-2 border-t border-dark-600/40">
               <button
                 type="button"
-                class="flex-1 py-1.5 px-2 bg-dark-700 hover:bg-dark-600 text-slate-300 text-[11px] font-medium rounded-lg transition flex items-center justify-center gap-1"
+                class="py-1.5 px-2 bg-dark-700 hover:bg-dark-600 text-slate-300 text-[11px] font-medium rounded-lg transition flex items-center justify-center gap-1"
                 on:click={() => projectStore.openFolder(sc.subpath)}
                 title="Open {sc.subpath}/ directory in File Explorer"
               >
                 <FolderOpen class="w-3 h-3 text-indigo-400" />
                 <span>Open</span>
               </button>
+
+              {#if sc.onManage}
+                <button
+                  type="button"
+                  class="flex-1 py-1.5 px-2 bg-dark-700 hover:bg-dark-600 text-slate-200 text-[11px] font-semibold rounded-lg transition flex items-center justify-center gap-1"
+                  on:click={sc.onManage}
+                >
+                  <span>{sc.manageLabel || 'Manage'}</span>
+                </button>
+              {/if}
 
               {#if sc.canAddVault && sc.category}
                 <button

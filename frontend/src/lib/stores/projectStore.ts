@@ -43,8 +43,33 @@ import {
   GetProjectRoster,
   SaveProjectRoster,
   ExportProjectAssetsToVault,
+  GetProjectStages,
+  ToggleStageExtraStage,
+  SetFighterHomeStage,
+  DeleteProjectStage,
+  GetProjectMotifs,
+  SetActiveMotif,
+  GetProjectLifebars,
+  SetActiveLifebar,
+  GetProjectAudio,
+  SetSystemBGM,
+  DeleteProjectAudio,
+  GetProjectFonts,
+  SetSystemFontMapping,
+  GetProjectStoryboards,
+  SetSystemStoryboard,
+  SelectAudioFileDialog,
+  SelectFontFileDialog,
 } from '../../../wailsjs/go/main/App';
-import type { ProjectRoster } from '../types';
+import type {
+  ProjectRoster,
+  ProjectStageInfo,
+  ProjectMotifInfo,
+  ProjectLifebarInfo,
+  ProjectAudioInfo,
+  ProjectFontInfo,
+  ProjectStoryboardInfo,
+} from '../types';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
 import { toastStore } from './toastStore';
 
@@ -719,6 +744,322 @@ function createProjectStore() {
     }
   }
 
+  async function loadStages(projectDir?: string): Promise<ProjectStageInfo[]> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return [];
+
+    try {
+      const res = await (GetProjectStages as any)(targetPath);
+      return res || [];
+    } catch (err: any) {
+      console.error('Failed to load stages:', err);
+      toastStore.error('Stages Error', err?.message || 'Could not load project stages');
+      return [];
+    }
+  }
+
+  async function toggleStageExtra(stagePath: string, enable: boolean, projectDir?: string): Promise<boolean> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return false;
+
+    try {
+      await ToggleStageExtraStage(targetPath, stagePath, enable);
+      toastStore.success('Stage Updated', enable ? 'Added to select screen ExtraStages' : 'Removed from ExtraStages');
+      return true;
+    } catch (err: any) {
+      toastStore.error('Stage Update Failed', err?.message || 'Could not update select.def');
+      return false;
+    }
+  }
+
+  async function setFighterHomeStage(fighterName: string, stagePath: string, projectDir?: string): Promise<boolean> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return false;
+
+    try {
+      await SetFighterHomeStage(targetPath, fighterName, stagePath);
+      toastStore.success('Home Stage Assigned', `${fighterName} -> ${stagePath || 'None'}`);
+      return true;
+    } catch (err: any) {
+      toastStore.error('Assignment Failed', err?.message || 'Could not set home stage');
+      return false;
+    }
+  }
+
+  async function deleteStage(stagePath: string, projectDir?: string): Promise<boolean> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return false;
+
+    try {
+      await DeleteProjectStage(targetPath, stagePath);
+      toastStore.success('Stage Deleted', stagePath);
+      return true;
+    } catch (err: any) {
+      toastStore.error('Delete Failed', err?.message || 'Could not delete stage');
+      return false;
+    }
+  }
+
+  async function loadMotifs(projectDir?: string): Promise<ProjectMotifInfo[]> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return [];
+
+    try {
+      const res = await (GetProjectMotifs as any)(targetPath);
+      return res || [];
+    } catch (err: any) {
+      console.error('Failed to load motifs:', err);
+      toastStore.error('Motif Error', err?.message || 'Could not load screenpacks');
+      return [];
+    }
+  }
+
+  async function activateMotif(motifPath: string, projectDir?: string): Promise<boolean> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return false;
+
+    try {
+      await SetActiveMotif(targetPath, motifPath);
+      toastStore.success('Motif Activated', `Updated save/config.ini to ${motifPath}`);
+      return true;
+    } catch (err: any) {
+      toastStore.error('Activation Failed', err?.message || 'Could not set active motif');
+      return false;
+    }
+  }
+
+  async function loadLifebars(projectDir?: string): Promise<ProjectLifebarInfo[]> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return [];
+
+    try {
+      const res = await (GetProjectLifebars as any)(targetPath);
+      return res || [];
+    } catch (err: any) {
+      console.error('Failed to load lifebars:', err);
+      toastStore.error('Lifebars Error', err?.message || 'Could not load lifebar packages');
+      return [];
+    }
+  }
+
+  async function activateLifebar(lifebarPath: string, projectDir?: string): Promise<boolean> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return false;
+
+    try {
+      await SetActiveLifebar(targetPath, lifebarPath);
+      toastStore.success('Lifebar Activated', `Set active HUD to ${lifebarPath}`);
+      return true;
+    } catch (err: any) {
+      toastStore.error('Activation Failed', err?.message || 'Could not set active lifebar');
+      return false;
+    }
+  }
+
+  async function loadAudio(projectDir?: string): Promise<ProjectAudioInfo[]> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return [];
+
+    try {
+      const res = await (GetProjectAudio as any)(targetPath);
+      return res || [];
+    } catch (err: any) {
+      console.error('Failed to load audio tracks:', err);
+      toastStore.error('Audio Error', err?.message || 'Could not load sound tracks');
+      return [];
+    }
+  }
+
+  async function setSystemBGM(eventType: string, audioPath: string, projectDir?: string): Promise<boolean> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return false;
+
+    try {
+      await SetSystemBGM(targetPath, eventType, audioPath);
+      toastStore.success('BGM Assigned', `Set ${eventType} music to ${audioPath}`);
+      return true;
+    } catch (err: any) {
+      toastStore.error('Assignment Failed', err?.message || 'Could not set system BGM');
+      return false;
+    }
+  }
+
+  async function deleteAudio(audioPath: string, projectDir?: string): Promise<boolean> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return false;
+
+    try {
+      await DeleteProjectAudio(targetPath, audioPath);
+      toastStore.success('Audio Deleted', audioPath);
+      return true;
+    } catch (err: any) {
+      toastStore.error('Delete Failed', err?.message || 'Could not delete audio track');
+      return false;
+    }
+  }
+
+  async function loadFonts(projectDir?: string): Promise<ProjectFontInfo[]> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return [];
+
+    try {
+      const res = await (GetProjectFonts as any)(targetPath);
+      return res || [];
+    } catch (err: any) {
+      console.error('Failed to load fonts:', err);
+      toastStore.error('Fonts Error', err?.message || 'Could not load project fonts');
+      return [];
+    }
+  }
+
+  async function setSystemFontMapping(targetDef: string, fontSlot: string, fontPath: string, projectDir?: string): Promise<boolean> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return false;
+
+    try {
+      await SetSystemFontMapping(targetPath, targetDef, fontSlot, fontPath);
+      toastStore.success('Font Mapped', `Mapped ${fontSlot} -> ${fontPath}`);
+      return true;
+    } catch (err: any) {
+      toastStore.error('Font Mapping Failed', err?.message || 'Could not update font mapping');
+      return false;
+    }
+  }
+
+  async function loadStoryboards(projectDir?: string): Promise<ProjectStoryboardInfo[]> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return [];
+
+    try {
+      const res = await (GetProjectStoryboards as any)(targetPath);
+      return res || [];
+    } catch (err: any) {
+      console.error('Failed to load storyboards:', err);
+      toastStore.error('Storyboard Error', err?.message || 'Could not load cutscenes');
+      return [];
+    }
+  }
+
+  async function setSystemStoryboard(storyType: string, storyboardPath: string, projectDir?: string): Promise<boolean> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return false;
+
+    try {
+      await SetSystemStoryboard(targetPath, storyType, storyboardPath);
+      toastStore.success('Storyboard Assigned', `Set ${storyType} -> ${storyboardPath}`);
+      return true;
+    } catch (err: any) {
+      toastStore.error('Assignment Failed', err?.message || 'Could not set storyboard');
+      return false;
+    }
+  }
+
+  async function selectAudioFileDialog(): Promise<string> {
+    try {
+      return await SelectAudioFileDialog();
+    } catch {
+      return '';
+    }
+  }
+
+  async function selectFontFileDialog(): Promise<string> {
+    try {
+      return await SelectFontFileDialog();
+    } catch {
+      return '';
+    }
+  }
+
   function dismissCrash() {
     update((s) => ({ ...s, activeCrash: null }));
   }
@@ -758,6 +1099,23 @@ function createProjectStore() {
     loadRoster,
     saveRoster,
     exportToVault,
+    loadStages,
+    toggleStageExtra,
+    setFighterHomeStage,
+    deleteStage,
+    loadMotifs,
+    activateMotif,
+    loadLifebars,
+    activateLifebar,
+    loadAudio,
+    setSystemBGM,
+    deleteAudio,
+    loadFonts,
+    setSystemFontMapping,
+    loadStoryboards,
+    setSystemStoryboard,
+    selectAudioFileDialog,
+    selectFontFileDialog,
   };
 }
 

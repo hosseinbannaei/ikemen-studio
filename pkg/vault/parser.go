@@ -206,10 +206,19 @@ func ParseDefFile(defPath string) (*DefInfo, error) {
 	if hasStageInfo {
 		info.Category = CategoryStage
 		info.IsValidAsset = true
-	} else if hasTitleInfo || hasLifebarInfo {
+	} else if hasLifebarInfo {
+		info.Category = CategoryLifebar
+		info.IsValidAsset = true
+	} else if hasTitleInfo || baseName == "system.def" {
 		info.Category = CategoryMotif
 		info.IsValidAsset = true
-	} else if info.IsStoryboard || info.IsFont || info.IsCommand {
+	} else if info.IsStoryboard {
+		info.Category = CategoryStoryboard
+		info.IsValidAsset = true
+	} else if info.IsFont {
+		info.Category = CategoryFont
+		info.IsValidAsset = true
+	} else if info.IsCommand {
 		info.IsValidAsset = false
 	} else if hasFiles || hasCharInfo || info.SpriteFile != "" || info.CmdFile != "" || info.CnsFile != "" {
 		info.Category = CategoryFighter
@@ -217,7 +226,7 @@ func ParseDefFile(defPath string) (*DefInfo, error) {
 	} else {
 		// Auxiliary / unknown .def
 		info.Category = CategoryFighter
-		info.IsValidAsset = (baseNoExt != "intro" && baseNoExt != "ending" && baseNoExt != "credits" && baseNoExt != "command")
+		info.IsValidAsset = (baseNoExt != "command")
 	}
 
 	if info.DisplayName == "" {

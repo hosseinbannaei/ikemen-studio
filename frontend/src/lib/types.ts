@@ -65,8 +65,82 @@ export interface Settings {
   defaultLinkStrategy?: string;
 }
 
-export type AssetCategory = 'fighters' | 'stages' | 'motifs' | 'sounds';
+export type AssetCategory = 'fighters' | 'stages' | 'motifs' | 'lifebars' | 'sounds' | 'fonts' | 'storyboards';
 export type LinkStrategy = 'symlink' | 'hardlink' | 'copy';
+
+export interface ProjectStageInfo {
+  relative_path: string;
+  display_name: string;
+  author: string;
+  version: string;
+  bgm_path: string;
+  preview_base64: string;
+  is_extra_stage: boolean;
+  assigned_characters: string[];
+  xscale: number;
+  yscale: number;
+  zoffset: number;
+  is_linked_from_vault: boolean;
+}
+
+export interface ProjectMotifInfo {
+  key: string;
+  display_name: string;
+  author: string;
+  version: string;
+  resolution: string;
+  grid_columns: number;
+  grid_rows: number;
+  total_slots: number;
+  is_active: boolean;
+  sprite_file: string;
+  sound_file: string;
+  preview_base64: string;
+  is_linked_from_vault: boolean;
+}
+
+export interface ProjectLifebarInfo {
+  key: string;
+  display_name: string;
+  author: string;
+  version: string;
+  is_active: boolean;
+  sprite_file: string;
+  sound_file: string;
+  font_count: number;
+  preview_base64: string;
+  is_linked_from_vault: boolean;
+}
+
+export interface ProjectAudioInfo {
+  relative_path: string;
+  file_name: string;
+  format: string;
+  size_bytes: number;
+  assigned_events: string[];
+  assigned_stages: string[];
+  is_linked_from_vault: boolean;
+}
+
+export interface ProjectFontInfo {
+  relative_path: string;
+  file_name: string;
+  font_type: string;
+  size_bytes: number;
+  system_slot_mappings: string[];
+  is_linked_from_vault: boolean;
+}
+
+export interface ProjectStoryboardInfo {
+  relative_path: string;
+  display_name: string;
+  scene_count: number;
+  bgm_path: string;
+  sprite_file: string;
+  assigned_slots: string[];
+  preview_base64: string;
+  is_linked_from_vault: boolean;
+}
 
 export interface VaultAsset {
   key: string;

@@ -806,5 +806,116 @@ func (a *App) ExportProjectAssetsToVault(projectDir, targetVaultID string) (*vau
 	return a.vaultManager.IngestMultiple(targetVaultID, paths, "auto")
 }
 
+// --- Specialized Project Asset Managers ---
+
+// GetProjectStages returns all stages installed in the project with metadata and extra stage status
+func (a *App) GetProjectStages(projectDir string) ([]project.ProjectStageInfo, error) {
+	return project.GetProjectStages(projectDir)
+}
+
+// ToggleStageExtraStage adds or removes a stage from [ExtraStages] in select.def
+func (a *App) ToggleStageExtraStage(projectDir, stagePath string, enable bool) error {
+	return project.ToggleStageExtraStage(projectDir, stagePath, enable)
+}
+
+// SetFighterHomeStage sets a character's default stage in select.def
+func (a *App) SetFighterHomeStage(projectDir, fighterName, stagePath string) error {
+	return project.SetFighterHomeStage(projectDir, fighterName, stagePath)
+}
+
+// DeleteProjectStage deletes a stage from disk and unregisters from select.def
+func (a *App) DeleteProjectStage(projectDir, stagePath string) error {
+	return project.DeleteProjectStage(projectDir, stagePath)
+}
+
+// GetProjectMotifs returns all motifs/screenpacks in data/ and detects active motif
+func (a *App) GetProjectMotifs(projectDir string) ([]project.ProjectMotifInfo, error) {
+	return project.GetProjectMotifs(projectDir)
+}
+
+// SetActiveMotif activates a screenpack by updating save/config.ini
+func (a *App) SetActiveMotif(projectDir, motifPath string) error {
+	return project.SetActiveMotif(projectDir, motifPath)
+}
+
+// GetProjectLifebars returns all lifebar / fight.def packages and detects active lifebar
+func (a *App) GetProjectLifebars(projectDir string) ([]project.ProjectLifebarInfo, error) {
+	return project.GetProjectLifebars(projectDir)
+}
+
+// SetActiveLifebar activates a lifebar HUD in system.def
+func (a *App) SetActiveLifebar(projectDir, lifebarPath string) error {
+	return project.SetActiveLifebar(projectDir, lifebarPath)
+}
+
+// GetProjectAudio returns all sound & BGM tracks in sound/ with system and stage mappings
+func (a *App) GetProjectAudio(projectDir string) ([]project.ProjectAudioInfo, error) {
+	return project.GetProjectAudio(projectDir)
+}
+
+// SetSystemBGM sets background music for Title, Select, VS, or Victory in system.def
+func (a *App) SetSystemBGM(projectDir, eventType, audioPath string) error {
+	return project.SetSystemBGM(projectDir, eventType, audioPath)
+}
+
+// DeleteProjectAudio removes an audio file from the project
+func (a *App) DeleteProjectAudio(projectDir, audioPath string) error {
+	return project.DeleteProjectAudio(projectDir, audioPath)
+}
+
+// GetProjectFonts returns all fonts in font/ and their slot mappings in system.def / fight.def
+func (a *App) GetProjectFonts(projectDir string) ([]project.ProjectFontInfo, error) {
+	return project.GetProjectFonts(projectDir)
+}
+
+// SetSystemFontMapping maps a font to a slot in system.def or fight.def
+func (a *App) SetSystemFontMapping(projectDir, targetDef, fontSlot, fontPath string) error {
+	return project.SetSystemFontMapping(projectDir, targetDef, fontSlot, fontPath)
+}
+
+// GetProjectStoryboards returns all cinematic cutscenes in data/ and their slot mappings
+func (a *App) GetProjectStoryboards(projectDir string) ([]project.ProjectStoryboardInfo, error) {
+	return project.GetProjectStoryboards(projectDir)
+}
+
+// SetSystemStoryboard sets intro, ending, or credits storyboard in system.def
+func (a *App) SetSystemStoryboard(projectDir, storyType, storyboardPath string) error {
+	return project.SetSystemStoryboard(projectDir, storyType, storyboardPath)
+}
+
+// SelectAudioFileDialog opens a file dialog for audio files
+func (a *App) SelectAudioFileDialog() (string, error) {
+	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Audio / Music Track",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "Audio Tracks (*.mp3, *.ogg, *.wav, *.flac)",
+				Pattern:     "*.mp3;*.ogg;*.wav;*.flac;*.mid",
+			},
+			{
+				DisplayName: "All Files (*.*)",
+				Pattern:     "*.*",
+			},
+		},
+	})
+}
+
+// SelectFontFileDialog opens a file dialog for font files
+func (a *App) SelectFontFileDialog() (string, error) {
+	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Font File",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "Fonts (*.fnt, *.def, *.ttf, *.otf)",
+				Pattern:     "*.fnt;*.def;*.ttf;*.otf;*.woff2",
+			},
+			{
+				DisplayName: "All Files (*.*)",
+				Pattern:     "*.*",
+			},
+		},
+	})
+}
+
 
 

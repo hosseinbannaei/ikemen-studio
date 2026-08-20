@@ -106,8 +106,14 @@ func IngestMultiple(vaultPath string, srcPaths []string, sourcePackage string) (
 			categoryDir = "stages"
 		case CategoryMotif:
 			categoryDir = "motifs"
+		case CategoryLifebar:
+			categoryDir = "lifebars"
 		case CategorySound:
 			categoryDir = "sound"
+		case CategoryFont:
+			categoryDir = "fonts"
+		case CategoryStoryboard:
+			categoryDir = "storyboards"
 		}
 
 		targetCategoryPath := filepath.Join(vaultPath, categoryDir)
@@ -366,10 +372,8 @@ func ScanStagingDir(stagingDir string) ([]DiscoveredAsset, error) {
 func scoreDefCandidate(defPath string, info *DefInfo, folderName string) int {
 	base := strings.ToLower(strings.TrimSuffix(filepath.Base(defPath), filepath.Ext(defPath)))
 
-	// Discard auxiliary defs completely
-	if info.IsStoryboard || info.IsFont || info.IsCommand || !info.IsValidAsset ||
-		base == "ending" || base == "intro" || base == "credits" || base == "logo" ||
-		base == "cutscene" || base == "introduction" || base == "font" || base == "command" {
+	// Discard invalid / command defs completely
+	if info.IsCommand || !info.IsValidAsset || base == "command" || base == "cmd" {
 		return -1000
 	}
 
@@ -394,16 +398,19 @@ func scoreDefCandidate(defPath string, info *DefInfo, folderName string) int {
 		score += 20
 	}
 
-	if info.Category == CategoryFighter {
+	switch info.Category {
+	case CategoryFighter:
 		score += 30
-	}
-
-	if info.Category == CategoryStage {
+	case CategoryStage:
 		score += 40
-	}
-
-	if info.Category == CategoryMotif {
+	case CategoryMotif:
 		score += 40
+	case CategoryLifebar:
+		score += 40
+	case CategoryStoryboard:
+		score += 35
+	case CategoryFont:
+		score += 25
 	}
 
 	if info.DisplayName != "" && !strings.EqualFold(info.DisplayName, "Unknown") {

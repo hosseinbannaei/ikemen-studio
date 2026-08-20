@@ -214,3 +214,73 @@ export function VerifyAndRepairProject(arg1) {
 export function VerifyAndRepairProjectWithMode(arg1, arg2) {
   return window['go']['main']['App']['VerifyAndRepairProjectWithMode'](arg1, arg2);
 }
+
+
+export function GetProjectStages(arg1) {
+  return window['go']['main']['App']['GetProjectStages'](arg1);
+}
+
+export function ToggleStageExtraStage(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ToggleStageExtraStage'](arg1, arg2, arg3);
+}
+
+export function SetFighterHomeStage(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetFighterHomeStage'](arg1, arg2, arg3);
+}
+
+export function DeleteProjectStage(arg1, arg2) {
+  return window['go']['main']['App']['DeleteProjectStage'](arg1, arg2);
+}
+
+export function GetProjectMotifs(arg1) {
+  return window['go']['main']['App']['GetProjectMotifs'](arg1);
+}
+
+export function SetActiveMotif(arg1, arg2) {
+  return window['go']['main']['App']['SetActiveMotif'](arg1, arg2);
+}
+
+export function GetProjectLifebars(arg1) {
+  return window['go']['main']['App']['GetProjectLifebars'](arg1);
+}
+
+export function SetActiveLifebar(arg1, arg2) {
+  return window['go']['main']['App']['SetActiveLifebar'](arg1, arg2);
+}
+
+export function GetProjectAudio(arg1) {
+  return window['go']['main']['App']['GetProjectAudio'](arg1);
+}
+
+export function SetSystemBGM(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetSystemBGM'](arg1, arg2, arg3);
+}
+
+export function DeleteProjectAudio(arg1, arg2) {
+  return window['go']['main']['App']['DeleteProjectAudio'](arg1, arg2);
+}
+
+export function GetProjectFonts(arg1) {
+  return window['go']['main']['App']['GetProjectFonts'](arg1);
+}
+
+export function SetSystemFontMapping(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SetSystemFontMapping'](arg1, arg2, arg3, arg4);
+}
+
+export function GetProjectStoryboards(arg1) {
+  return window['go']['main']['App']['GetProjectStoryboards'](arg1);
+}
+
+export function SetSystemStoryboard(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetSystemStoryboard'](arg1, arg2, arg3);
+}
+
+export function SelectAudioFileDialog() {
+  return window['go']['main']['App']['SelectAudioFileDialog']();
+}
+
+export function SelectFontFileDialog() {
+  return window['go']['main']['App']['SelectFontFileDialog']();
+}
+

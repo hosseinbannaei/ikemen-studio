@@ -138,10 +138,48 @@ func VerifyAndRepairProjectWithMode(engineDir, projectDir string, updateCoreSyst
 		})
 	}
 
+	// Check and heal character/stage symlinks
+	charsDir := filepath.Join(projectDir, "chars")
+	if entries, err := os.ReadDir(charsDir); err == nil {
+		for _, e := range entries {
+			p := filepath.Join(charsDir, e.Name())
+			fi, err := os.Lstat(p)
+			if err != nil {
+				continue
+			}
+			if fi.Mode()&os.ModeSymlink != 0 {
+				target, err := os.Readlink(p)
+				if err == nil {
+					if _, statErr := os.Stat(target); os.IsNotExist(statErr) {
+						// Target is missing; try to find canonical target without timestamp suffix
+						baseName := e.Name()
+						lastUnderscore := strings.LastIndex(baseName, "_")
+						if lastUnderscore != -1 {
+							baseName = baseName[:lastUnderscore]
+						}
+						vaultDir := filepath.Dir(filepath.Dir(target))
+						healedTarget := filepath.Join(vaultDir, "chars", baseName)
+						if _, statErr := os.Stat(healedTarget); statErr == nil {
+							_ = os.Remove(p)
+							_ = os.Symlink(healedTarget, p)
+							report.RepairedCount++
+							report.RepairedFiles = append(report.RepairedFiles, filepath.Join("chars", e.Name()))
+							logLines = append(logLines, fmt.Sprintf("[HEALED-SYMLINK] chars/%s -> %s", e.Name(), healedTarget))
+						} else {
+							_ = os.Remove(p)
+							logLines = append(logLines, fmt.Sprintf("[PRUNED-DEAD-SYMLINK] chars/%s", e.Name()))
+						}
+					}
+				}
+			}
+		}
+	}
+
 	// Always ensure config.ini has valid RenderMode
 	if err := config.RepairGameConfig(projectDir, engineDir); err == nil {
 		logLines = append(logLines, "[NORMALIZED-CFG] save/config.ini RenderMode set to OpenGL 3.3")
 	}
+
 
 	logLines = append(logLines, "--------------------------------------------------------")
 	logLines = append(logLines, fmt.Sprintf("Total Files Checked: %d", report.TotalChecked))

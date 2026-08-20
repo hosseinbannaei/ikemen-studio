@@ -10,6 +10,12 @@
   import ProjectWorkspaceView from './lib/components/ProjectWorkspaceView.svelte';
   import ProjectRepairHubView from './lib/components/ProjectRepairHubView.svelte';
   import RosterEditorView from './lib/components/RosterEditorView.svelte';
+  import StageManagerView from './lib/components/StageManagerView.svelte';
+  import MotifManagerView from './lib/components/MotifManagerView.svelte';
+  import LifebarManagerView from './lib/components/LifebarManagerView.svelte';
+  import SoundManagerView from './lib/components/SoundManagerView.svelte';
+  import FontManagerView from './lib/components/FontManagerView.svelte';
+  import StoryboardManagerView from './lib/components/StoryboardManagerView.svelte';
   import EngineManagerView from './lib/components/EngineManagerView.svelte';
   import VaultView from './lib/components/VaultView.svelte';
   import SettingsView from './lib/components/SettingsView.svelte';
@@ -20,7 +26,17 @@
   import Toast from './lib/components/Toast.svelte';
 
   let activeTab: 'projects' | 'vault' | 'engines' | 'settings' = 'projects';
-  let projectsSubView: 'list' | 'workspace' | 'repair' | 'roster' = 'list';
+  let projectsSubView:
+    | 'list'
+    | 'workspace'
+    | 'repair'
+    | 'roster'
+    | 'stages'
+    | 'motifs'
+    | 'lifebars'
+    | 'sound'
+    | 'fonts'
+    | 'storyboards' = 'list';
 
   let showNewProjectModal = false;
   let showOpenProjectModal = false;
@@ -70,27 +86,67 @@
     projectsSubView = 'roster';
   }
 
+  function handleOpenStages() {
+    activeTab = 'projects';
+    projectsSubView = 'stages';
+  }
+
+  function handleOpenMotifs() {
+    activeTab = 'projects';
+    projectsSubView = 'motifs';
+  }
+
+  function handleOpenLifebars() {
+    activeTab = 'projects';
+    projectsSubView = 'lifebars';
+  }
+
+  function handleOpenSound() {
+    activeTab = 'projects';
+    projectsSubView = 'sound';
+  }
+
+  function handleOpenFonts() {
+    activeTab = 'projects';
+    projectsSubView = 'fonts';
+  }
+
+  function handleOpenStoryboards() {
+    activeTab = 'projects';
+    projectsSubView = 'storyboards';
+  }
+
   $: breadcrumbItems = (() => {
     if (activeTab === 'projects') {
-      if (projectsSubView === 'repair' && $projectStore.current) {
-        return [
+      if ($projectStore.current) {
+        const base = [
           { label: 'Projects', onClick: () => (projectsSubView = 'list') },
           { label: $projectStore.current.name, onClick: () => (projectsSubView = 'workspace') },
-          { label: 'Maintenance & Repair Hub' },
         ];
-      }
-      if (projectsSubView === 'roster' && $projectStore.current) {
-        return [
-          { label: 'Projects', onClick: () => (projectsSubView = 'list') },
-          { label: $projectStore.current.name, onClick: () => (projectsSubView = 'workspace') },
-          { label: 'Roster & Select Screen' },
-        ];
-      }
-      if (projectsSubView === 'workspace' && $projectStore.current) {
-        return [
-          { label: 'Projects', onClick: () => (projectsSubView = 'list') },
-          { label: $projectStore.current.name },
-        ];
+
+        switch (projectsSubView) {
+          case 'repair':
+            return [...base, { label: 'Maintenance & Repair Hub' }];
+          case 'roster':
+            return [...base, { label: 'Roster & Select Screen' }];
+          case 'stages':
+            return [...base, { label: 'Stages Manager' }];
+          case 'motifs':
+            return [...base, { label: 'Screenpacks & Motifs' }];
+          case 'lifebars':
+            return [...base, { label: 'Lifebars & Fight HUD' }];
+          case 'sound':
+            return [...base, { label: 'Sound & Music Library' }];
+          case 'fonts':
+            return [...base, { label: 'Fonts & Typography' }];
+          case 'storyboards':
+            return [...base, { label: 'Storyboards & Cutscenes' }];
+          case 'workspace':
+            return [
+              { label: 'Projects', onClick: () => (projectsSubView = 'list') },
+              { label: $projectStore.current.name },
+            ];
+        }
       }
       return [{ label: 'Projects' }];
     } else if (activeTab === 'vault') {
@@ -104,7 +160,7 @@
 
   $: backHandler = (() => {
     if (activeTab === 'projects') {
-      if (projectsSubView === 'repair' || projectsSubView === 'roster') return handleBackToWorkspace;
+      if (projectsSubView !== 'workspace' && projectsSubView !== 'list') return handleBackToWorkspace;
       if (projectsSubView === 'workspace') return handleBackToProjectsList;
     }
     return null;
@@ -112,7 +168,7 @@
 
   $: backLabel = (() => {
     if (activeTab === 'projects') {
-      if (projectsSubView === 'repair' || projectsSubView === 'roster') return 'Workspace';
+      if (projectsSubView !== 'workspace' && projectsSubView !== 'list') return 'Workspace';
       if (projectsSubView === 'workspace') return 'Projects';
     }
     return 'Back';
@@ -134,7 +190,7 @@
       items={breadcrumbItems}
       onBack={backHandler}
       {backLabel}
-      showPlayButton={activeTab === 'projects' && (projectsSubView === 'workspace' || projectsSubView === 'repair' || projectsSubView === 'roster')}
+      showPlayButton={activeTab === 'projects' && projectsSubView !== 'list'}
     />
 
     <!-- Main Content Tab Router -->
@@ -144,11 +200,29 @@
           <ProjectRepairHubView onBackToWorkspace={handleBackToWorkspace} />
         {:else if projectsSubView === 'roster' && $projectStore.current}
           <RosterEditorView onBackToWorkspace={handleBackToWorkspace} />
+        {:else if projectsSubView === 'stages' && $projectStore.current}
+          <StageManagerView onBackToWorkspace={handleBackToWorkspace} />
+        {:else if projectsSubView === 'motifs' && $projectStore.current}
+          <MotifManagerView onBackToWorkspace={handleBackToWorkspace} />
+        {:else if projectsSubView === 'lifebars' && $projectStore.current}
+          <LifebarManagerView onBackToWorkspace={handleBackToWorkspace} />
+        {:else if projectsSubView === 'sound' && $projectStore.current}
+          <SoundManagerView onBackToWorkspace={handleBackToWorkspace} />
+        {:else if projectsSubView === 'fonts' && $projectStore.current}
+          <FontManagerView onBackToWorkspace={handleBackToWorkspace} />
+        {:else if projectsSubView === 'storyboards' && $projectStore.current}
+          <StoryboardManagerView onBackToWorkspace={handleBackToWorkspace} />
         {:else if projectsSubView === 'workspace' && $projectStore.current}
           <ProjectWorkspaceView
             onBackToProjects={handleBackToProjectsList}
             onOpenRepairHub={handleOpenRepairHub}
             onOpenRosterEditor={handleOpenRosterEditor}
+            onOpenStages={handleOpenStages}
+            onOpenMotifs={handleOpenMotifs}
+            onOpenLifebars={handleOpenLifebars}
+            onOpenSound={handleOpenSound}
+            onOpenFonts={handleOpenFonts}
+            onOpenStoryboards={handleOpenStoryboards}
           />
         {:else}
           <ProjectsView
