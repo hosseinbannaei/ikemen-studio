@@ -105,7 +105,10 @@
           {asset.display_name || asset.key}
         </h4>
       </div>
-      <p class="text-xs text-slate-400 flex items-center gap-1 mt-0.5 truncate">
+      <div class="text-[10px] text-slate-500 font-mono truncate mt-0.5" title={asset.key}>
+        {asset.key}
+      </div>
+      <p class="text-xs text-slate-400 flex items-center gap-1 mt-1 truncate">
         <span class="opacity-60">by</span>
         <span class="text-slate-300 font-medium">{asset.author || 'Unknown'}</span>
       </p>

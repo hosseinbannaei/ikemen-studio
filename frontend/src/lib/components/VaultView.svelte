@@ -15,7 +15,9 @@
     Sparkles,
     RefreshCw,
     X,
-    Plus
+    Plus,
+    LayoutGrid,
+    List
   } from 'lucide-svelte';
   import { vaultStore, filteredAssets } from '../stores/vaultStore';
   import VaultCard from './VaultCard.svelte';
@@ -27,11 +29,33 @@
   let showPackModal = false;
   let pendingPackPath = '';
   let isDraggingOver = false;
+  let viewMode: 'grid' | 'list' = 'grid';
 
   onMount(async () => {
     await vaultStore.loadVaults();
     await vaultStore.loadAssets();
   });
+
+  function formatBytes(bytes: number): string {
+    if (!bytes) return '0 B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function getCategoryBadge(cat: string): string {
+    switch (cat) {
+      case 'fighters':
+        return 'bg-rose-500/20 text-rose-300 border-rose-500/30';
+      case 'stages':
+        return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+      case 'motifs':
+        return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
+      case 'sounds':
+        return 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
+      default:
+        return 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+    }
+  }
 
   // Extract all unique tags across currently loaded assets
   $: allTags = Array.from(
@@ -186,7 +210,7 @@
         </div>
       {/if}
 
-      <!-- Search & Filters -->
+      <!-- Search & Filters & View Switcher -->
       <div class="flex items-center justify-between gap-4 pt-1">
         <!-- Category Tabs -->
         <div class="flex items-center gap-1.5 p-1 bg-dark-950 rounded-xl border border-dark-700/60">
@@ -204,23 +228,43 @@
           {/each}
         </div>
 
-        <!-- Search Bar -->
-        <div class="relative w-80">
-          <Search class="absolute left-3.5 top-2.5 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search characters, authors, tags..."
-            bind:value={$vaultStore.searchQuery}
-            class="w-full bg-dark-950 border border-dark-600/80 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500 transition"
-          />
-          {#if $vaultStore.searchQuery}
+        <div class="flex items-center gap-2.5">
+          <!-- Search Bar -->
+          <div class="relative w-72">
+            <Search class="absolute left-3.5 top-2.5 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search characters, authors, tags..."
+              bind:value={$vaultStore.searchQuery}
+              class="w-full bg-dark-950 border border-dark-600/80 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500 transition"
+            />
+            {#if $vaultStore.searchQuery}
+              <button
+                class="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300"
+                on:click={() => vaultStore.setSearchQuery('')}
+              >
+                <X class="w-3.5 h-3.5" />
+              </button>
+            {/if}
+          </div>
+
+          <!-- Grid / List View Mode Switcher -->
+          <div class="flex items-center p-1 bg-dark-950 rounded-xl border border-dark-700/60">
             <button
-              class="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300"
-              on:click={() => vaultStore.setSearchQuery('')}
+              class="p-1.5 rounded-lg transition {viewMode === 'grid' ? 'bg-dark-800 text-brand-300 shadow-sm' : 'text-slate-400 hover:text-slate-200'}"
+              title="Grid View"
+              on:click={() => (viewMode = 'grid')}
             >
-              <X class="w-3.5 h-3.5" />
+              <LayoutGrid class="w-4 h-4" />
             </button>
-          {/if}
+            <button
+              class="p-1.5 rounded-lg transition {viewMode === 'list' ? 'bg-dark-800 text-brand-300 shadow-sm' : 'text-slate-400 hover:text-slate-200'}"
+              title="List / Table View"
+              on:click={() => (viewMode = 'list')}
+            >
+              <List class="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -251,7 +295,7 @@
       {/if}
     </header>
 
-    <!-- Asset Cards Grid -->
+    <!-- Asset Cards / List View Container -->
     <div class="flex-1 overflow-y-auto p-6">
       {#if $filteredAssets.length === 0}
         <!-- Empty State -->
@@ -270,7 +314,8 @@
             </button>
           </div>
         </div>
-      {:else}
+      {:else if viewMode === 'grid'}
+        <!-- Grid View -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {#each $filteredAssets as asset (asset.key)}
             <VaultCard
@@ -278,6 +323,90 @@
               onSelect={(a) => vaultStore.setSelectedAsset(a)}
             />
           {/each}
+        </div>
+      {:else}
+        <!-- Table / List View -->
+        <div class="bg-dark-850 border border-dark-700/80 rounded-2xl overflow-hidden shadow-sm">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-dark-900/80 border-b border-dark-700/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 select-none">
+                <th class="py-3 px-4 w-16">Preview</th>
+                <th class="py-3 px-4">Name & Folder</th>
+                <th class="py-3 px-4">Author</th>
+                <th class="py-3 px-4">Category</th>
+                <th class="py-3 px-4">Version</th>
+                <th class="py-3 px-4">Size</th>
+                <th class="py-3 px-4">Source</th>
+                <th class="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-dark-700/50">
+              {#each $filteredAssets as asset (asset.key)}
+                <tr
+                  class="hover:bg-dark-800/80 cursor-pointer transition group"
+                  on:click={() => vaultStore.setSelectedAsset(asset)}
+                >
+                  <!-- Thumbnail -->
+                  <td class="py-2.5 px-4">
+                    <div class="w-10 h-10 rounded-xl bg-dark-900 border border-dark-700/80 overflow-hidden flex items-center justify-center flex-shrink-0">
+                      {#if asset.preview_base64}
+                        <img src={asset.preview_base64} alt={asset.display_name} class="w-full h-full object-contain" />
+                      {:else}
+                        <Package class="w-5 h-5 text-slate-600" />
+                      {/if}
+                    </div>
+                  </td>
+
+                  <!-- Name & Subtitle Key -->
+                  <td class="py-2.5 px-4">
+                    <div class="font-bold text-slate-100 group-hover:text-brand-300 transition-colors">
+                      {asset.display_name || asset.key}
+                    </div>
+                    <div class="text-[11px] text-slate-500 font-mono">
+                      {asset.key}
+                    </div>
+                  </td>
+
+                  <!-- Author -->
+                  <td class="py-2.5 px-4 text-slate-300 font-medium">
+                    {asset.author || 'Unknown'}
+                  </td>
+
+                  <!-- Category -->
+                  <td class="py-2.5 px-4">
+                    <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border {getCategoryBadge(asset.category)}">
+                      {asset.category}
+                    </span>
+                  </td>
+
+                  <!-- Version -->
+                  <td class="py-2.5 px-4 text-slate-400">
+                    {asset.mugen_version || asset.ikemen_version || '—'}
+                  </td>
+
+                  <!-- Size -->
+                  <td class="py-2.5 px-4 text-slate-400 font-mono">
+                    {formatBytes(asset.size_bytes)}
+                  </td>
+
+                  <!-- Source Package -->
+                  <td class="py-2.5 px-4 text-slate-400 max-w-[140px] truncate" title={asset.source_url || asset.source_package}>
+                    {asset.source_package || 'Local'}
+                  </td>
+
+                  <!-- Actions -->
+                  <td class="py-2.5 px-4 text-right">
+                    <button
+                      class="px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white bg-dark-800 hover:bg-dark-700 border border-dark-600 rounded-lg transition"
+                      on:click|stopPropagation={() => vaultStore.setSelectedAsset(asset)}
+                    >
+                      Inspect
+                    </button>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
         </div>
       {/if}
     </div>

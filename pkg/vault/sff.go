@@ -16,7 +16,7 @@ import (
 )
 
 // ExtractAndCachePortrait attempts to find and extract Sprite 9000,0 or 9000,1 from an SFF file,
-// saves it as a PNG in vaultDir/.previews/<safeKey>.png, and returns the relative path and base64 URI.
+// or loose image files (portrait.png, icon.png, *.png), saves it as a PNG, and returns the relative path and base64 URI.
 func ExtractAndCachePortrait(vaultDir, assetKey, sffPath string) (relPath string, base64URI string, err error) {
 	safeName := strings.ReplaceAll(assetKey, "/", "_") + ".png"
 	previewsDir := filepath.Join(vaultDir, ".previews")
@@ -27,14 +27,22 @@ func ExtractAndCachePortrait(vaultDir, assetKey, sffPath string) (relPath string
 	relPath = filepath.Join(".previews", safeName)
 
 	var img image.Image
+
+	// 1. Try SFF extraction
 	if sffPath != "" {
 		if fileImg, parseErr := ParseSFFPortrait(sffPath); parseErr == nil && fileImg != nil {
 			img = fileImg
 		}
 	}
 
+	// 2. If SFF failed or not present, search character directory for loose portrait images
 	if img == nil {
-		// Generate a clean stylized procedural avatar with initials if extraction failed or no SFF
+		assetDir := filepath.Join(vaultDir, assetKey)
+		img = findLooseImage(assetDir)
+	}
+
+	// 3. Fallback to procedural avatar if no image found
+	if img == nil {
 		img = generatePlaceholderAvatar(assetKey)
 	}
 
@@ -53,6 +61,44 @@ func ExtractAndCachePortrait(vaultDir, assetKey, sffPath string) (relPath string
 
 	base64URI = "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
 	return relPath, base64URI, nil
+}
+
+func findLooseImage(dir string) image.Image {
+	if _, err := os.Stat(dir); err != nil {
+		return nil
+	}
+
+	// Prioritized candidates
+	priorityNames := []string{"portrait.png", "big.png", "icon.png", "small.png", "preview.png", "face.png"}
+	for _, name := range priorityNames {
+		p := filepath.Join(dir, name)
+		if f, err := os.Open(p); err == nil {
+			defer f.Close()
+			if decoded, _, err := image.Decode(f); err == nil {
+				return decoded
+			}
+		}
+	}
+
+	// Any png in the directory
+	var foundImg image.Image
+	_ = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err == nil && !info.IsDir() && foundImg == nil {
+			ext := strings.ToLower(filepath.Ext(path))
+			if ext == ".png" || ext == ".jpg" || ext == ".jpeg" {
+				if f, err := os.Open(path); err == nil {
+					defer f.Close()
+					if decoded, _, err := image.Decode(f); err == nil {
+						foundImg = decoded
+						return io.EOF
+					}
+				}
+			}
+		}
+		return nil
+	})
+
+	return foundImg
 }
 
 // ParseSFFPortrait parses an SFF file (v1 or v2) and extracts Sprite (9000,0) or (9000,1).
