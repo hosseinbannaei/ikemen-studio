@@ -34,6 +34,10 @@ export function DownloadEngine(arg1) {
   return window['go']['main']['App']['DownloadEngine'](arg1);
 }
 
+export function ExportProjectAssetsToVault(arg1, arg2) {
+  return window['go']['main']['App']['ExportProjectAssetsToVault'](arg1, arg2);
+}
+
 export function FetchAvailableEngines() {
   return window['go']['main']['App']['FetchAvailableEngines']();
 }
@@ -56,6 +60,10 @@ export function GetProjectFightersAndStages(arg1) {
 
 export function GetProjectLogs(arg1) {
   return window['go']['main']['App']['GetProjectLogs'](arg1);
+}
+
+export function GetProjectRoster(arg1) {
+  return window['go']['main']['App']['GetProjectRoster'](arg1);
 }
 
 export function GetRecentProjects() {
@@ -150,6 +158,10 @@ export function SaveGameConfig(arg1, arg2) {
   return window['go']['main']['App']['SaveGameConfig'](arg1, arg2);
 }
 
+export function SaveProjectRoster(arg1, arg2) {
+  return window['go']['main']['App']['SaveProjectRoster'](arg1, arg2);
+}
+
 export function SelectArchiveDialog() {
   return window['go']['main']['App']['SelectArchiveDialog']();
 }
@@ -197,16 +209,3 @@ export function VerifyAndRepairProject(arg1) {
 export function VerifyAndRepairProjectWithMode(arg1, arg2) {
   return window['go']['main']['App']['VerifyAndRepairProjectWithMode'](arg1, arg2);
 }
-
-export function GetProjectRoster(arg1) {
-  return window['go']['main']['App']['GetProjectRoster'](arg1);
-}
-
-export function SaveProjectRoster(arg1, arg2) {
-  return window['go']['main']['App']['SaveProjectRoster'](arg1, arg2);
-}
-
-export function ExportProjectAssetsToVault(arg1, arg2) {
-  return window['go']['main']['App']['ExportProjectAssetsToVault'](arg1, arg2);
-}
-

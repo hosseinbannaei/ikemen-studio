@@ -58,4 +58,18 @@ func TestSaveAndLoadSettings(t *testing.T) {
 	if len(loaded.RecentProjects) != 2 {
 		t.Errorf("expected 2 recent projects, got %d", len(loaded.RecentProjects))
 	}
+
+	// Test RemoveRecentProject
+	if err := RemoveRecentProject("/path/to/project1"); err != nil {
+		t.Fatalf("failed to remove recent project: %v", err)
+	}
+
+	afterRemove, err := LoadSettings()
+	if err != nil {
+		t.Fatalf("failed to load settings after removal: %v", err)
+	}
+	if len(afterRemove.RecentProjects) != 1 || afterRemove.RecentProjects[0] != "/path/to/project2" {
+		t.Errorf("expected 1 recent project /path/to/project2, got %+v", afterRemove.RecentProjects)
+	}
 }
+

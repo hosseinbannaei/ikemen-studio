@@ -114,7 +114,10 @@ func DefaultSettings() Settings {
 func LoadSettings() (*Settings, error) {
 	mu.Lock()
 	defer mu.Unlock()
+	return loadSettingsLocked()
+}
 
+func loadSettingsLocked() (*Settings, error) {
 	configPath := GetConfigPath()
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		defaults := DefaultSettings()
@@ -191,17 +194,18 @@ func RemoveRecentProject(projectDir string) error {
 	mu.Lock()
 	defer mu.Unlock()
 
-	cfg, err := LoadSettings()
+	cfg, err := loadSettingsLocked()
 	if err != nil {
 		return err
 	}
 
 	var updated []string
 	for _, p := range cfg.RecentProjects {
-		if !strings.EqualFold(p, projectDir) {
+		if !strings.EqualFold(filepath.Clean(p), filepath.Clean(projectDir)) {
 			updated = append(updated, p)
 		}
 	}
 	cfg.RecentProjects = updated
 	return saveSettingsLocked(cfg)
 }
+

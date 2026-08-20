@@ -22,6 +22,8 @@ export function DetectExistingGame(arg1:string):Promise<project.ExistingGameInsp
 
 export function DownloadEngine(arg1:string):Promise<void>;
 
+export function ExportProjectAssetsToVault(arg1:string,arg2:string):Promise<vault.IngestResult>;
+
 export function FetchAvailableEngines():Promise<Array<engine.ReleaseInfo>>;
 
 export function GetEngineBackups(arg1:string):Promise<Array<project.EngineBackupInfo>>;
@@ -33,6 +35,8 @@ export function GetInstalledEngines():Promise<Array<engine.InstalledEngine>>;
 export function GetProjectFightersAndStages(arg1:string):Promise<main.ProjectFightersAndStages>;
 
 export function GetProjectLogs(arg1:string):Promise<string>;
+
+export function GetProjectRoster(arg1:string):Promise<project.ProjectRoster>;
 
 export function GetRecentProjects():Promise<Array<string>>;
 
@@ -80,6 +84,8 @@ export function RollbackProjectEngine(arg1:string,arg2:string):Promise<void>;
 
 export function SaveGameConfig(arg1:string,arg2:Record<string, string>):Promise<void>;
 
+export function SaveProjectRoster(arg1:string,arg2:project.ProjectRoster):Promise<void>;
+
 export function SelectArchiveDialog():Promise<string>;
 
 export function SelectDirectoryDialog(arg1:string):Promise<string>;
@@ -103,10 +109,3 @@ export function UpdateVaultAsset(arg1:string,arg2:string,arg3:vault.AssetMetadat
 export function VerifyAndRepairProject(arg1:string):Promise<project.VerificationReport>;
 
 export function VerifyAndRepairProjectWithMode(arg1:string,arg2:boolean):Promise<project.VerificationReport>;
-
-export function GetProjectRoster(arg1:string):Promise<project.ProjectRoster>;
-
-export function SaveProjectRoster(arg1:string,arg2:project.ProjectRoster):Promise<void>;
-
-export function ExportProjectAssetsToVault(arg1:string,arg2:string):Promise<vault.IngestResult>;
-

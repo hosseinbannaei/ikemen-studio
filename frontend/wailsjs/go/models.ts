@@ -461,6 +461,117 @@ export namespace project {
 		    return a;
 		}
 	}
+	export class RosterAvailableCharacter {
+	    name: string;
+	    display_name: string;
+	    author: string;
+	    portrait_base64: string;
+	    is_linked: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new RosterAvailableCharacter(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.display_name = source["display_name"];
+	        this.author = source["author"];
+	        this.portrait_base64 = source["portrait_base64"];
+	        this.is_linked = source["is_linked"];
+	    }
+	}
+	export class RosterCharacterSlot {
+	    index: number;
+	    type: string;
+	    character: string;
+	    display_name: string;
+	    author: string;
+	    portrait_base64: string;
+	    home_stage: string;
+	    music: string;
+	    order: number;
+	    include_in_arcade: boolean;
+	    raw_line: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RosterCharacterSlot(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.index = source["index"];
+	        this.type = source["type"];
+	        this.character = source["character"];
+	        this.display_name = source["display_name"];
+	        this.author = source["author"];
+	        this.portrait_base64 = source["portrait_base64"];
+	        this.home_stage = source["home_stage"];
+	        this.music = source["music"];
+	        this.order = source["order"];
+	        this.include_in_arcade = source["include_in_arcade"];
+	        this.raw_line = source["raw_line"];
+	    }
+	}
+	export class RosterGridInfo {
+	    rows: number;
+	    columns: number;
+	    wrapping: boolean;
+	    show_empty_boxes: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new RosterGridInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rows = source["rows"];
+	        this.columns = source["columns"];
+	        this.wrapping = source["wrapping"];
+	        this.show_empty_boxes = source["show_empty_boxes"];
+	    }
+	}
+	export class ProjectRoster {
+	    grid: RosterGridInfo;
+	    slots: RosterCharacterSlot[];
+	    extra_stages: string[];
+	    available_characters: RosterAvailableCharacter[];
+	    available_stages: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ProjectRoster(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.grid = this.convertValues(source["grid"], RosterGridInfo);
+	        this.slots = this.convertValues(source["slots"], RosterCharacterSlot);
+	        this.extra_stages = source["extra_stages"];
+	        this.available_characters = this.convertValues(source["available_characters"], RosterAvailableCharacter);
+	        this.available_stages = source["available_stages"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
 	export class VerificationReport {
 	    totalChecked: number;
 	    missingCount: number;

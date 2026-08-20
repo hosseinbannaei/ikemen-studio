@@ -50,8 +50,9 @@
 
   async function confirmRemoveRecent() {
     if (projectToRemove) {
-      await projectStore.removeRecent(projectToRemove);
+      const target = projectToRemove;
       projectToRemove = null;
+      await projectStore.removeRecent(target);
     }
   }
 </script>
