@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { engineStore } from '../stores/engineStore';
+  import { settingsStore } from '../stores/settingsStore';
+  import { OpenFolderInExplorer } from '../../../wailsjs/go/main/App';
   import {
     Download,
     Trash2,
@@ -14,6 +16,8 @@
     XCircle,
     Loader2,
     Sparkles,
+    Folder,
+    FolderOpen,
   } from 'lucide-svelte';
 
   let activeSubTab: 'installed' | 'available' = 'installed';
@@ -21,9 +25,16 @@
   let expandedRelease: string | null = null;
 
   onMount(() => {
+    settingsStore.load();
     engineStore.loadInstalled();
     engineStore.loadAvailable();
   });
+
+  function handleOpenEnginesFolder() {
+    if ($settingsStore.enginesDir) {
+      OpenFolderInExplorer($settingsStore.enginesDir);
+    }
+  }
 
   function isInstalled(tag: string): boolean {
     const download = $engineStore.downloads[tag];
@@ -71,17 +82,29 @@
       <p class="text-xs text-slate-400 mt-0.5">Discover, download, and manage local Ikemen GO engine runtimes</p>
     </div>
 
-    <button
-      type="button"
-      class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600/80 text-slate-200 text-xs font-semibold shadow-sm transition"
-      on:click={() => {
-        engineStore.loadInstalled();
-        engineStore.loadAvailable();
-      }}
-    >
-      <RefreshCw class="w-4 h-4 {$engineStore.loadingAvailable || $engineStore.loadingInstalled ? 'animate-spin text-indigo-400' : 'text-indigo-400'}" />
-      <span>Refresh Releases</span>
-    </button>
+    <div class="flex items-center gap-2.5">
+      <button
+        type="button"
+        class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600/80 text-slate-200 text-xs font-semibold shadow-sm transition"
+        on:click={handleOpenEnginesFolder}
+        title="Open local engines storage folder"
+      >
+        <FolderOpen class="w-4 h-4 text-amber-400" />
+        <span>Open Engines Folder</span>
+      </button>
+
+      <button
+        type="button"
+        class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600/80 text-slate-200 text-xs font-semibold shadow-sm transition"
+        on:click={() => {
+          engineStore.loadInstalled();
+          engineStore.loadAvailable();
+        }}
+      >
+        <RefreshCw class="w-4 h-4 {$engineStore.loadingAvailable || $engineStore.loadingInstalled ? 'animate-spin text-indigo-400' : 'text-indigo-400'}" />
+        <span>Refresh Releases</span>
+      </button>
+    </div>
   </div>
 
   <!-- Sub Tabs & Channel Filters -->

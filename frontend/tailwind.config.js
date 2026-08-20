@@ -9,10 +9,12 @@ export default {
     extend: {
       colors: {
         dark: {
-          900: '#0f1117',
-          800: '#161922',
-          700: '#1f2430',
-          600: '#2b3242',
+          900: 'var(--bg-app)',
+          850: 'var(--bg-sidebar)',
+          800: 'var(--bg-surface)',
+          750: 'var(--bg-hover)',
+          700: 'var(--bg-card)',
+          600: 'var(--bg-border)',
         }
       }
     },

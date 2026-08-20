@@ -241,8 +241,9 @@
             bind:value={renderer}
             class="w-full bg-dark-900 border border-dark-600 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
           >
-            <option value="0">Default OpenGL (Hardware Accelerated)</option>
-            <option value="1">DirectX / Software (Compatibility Fallback)</option>
+            <option value="0">OpenGL 3.3 Core (Default Hardware Accelerated)</option>
+            <option value="1">Vulkan 1.x (High Performance / Next-Gen)</option>
+            <option value="2">DirectX / Software (Compatibility Fallback)</option>
           </select>
         </div>
       {/if}

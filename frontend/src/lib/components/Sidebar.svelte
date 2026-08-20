@@ -1,6 +1,7 @@
 <script lang="ts">
   import { projectStore } from '../stores/projectStore';
   import { engineStore } from '../stores/engineStore';
+  import { settingsStore } from '../stores/settingsStore';
   import {
     FolderKanban,
     Layers,
@@ -11,6 +12,8 @@
     Loader2,
     ChevronRight,
     Sparkles,
+    Sun,
+    Moon,
   } from 'lucide-svelte';
 
   export let activeTab: 'projects' | 'engines' | 'settings';
@@ -99,7 +102,7 @@
     </button>
   </div>
 
-  <!-- Bottom: Active Project Widget (if loaded) & App Info -->
+  <!-- Bottom: Active Project Widget (if loaded), Theme Switcher & App Info -->
   <div class="p-3 border-t border-dark-600/40 space-y-2 bg-dark-900/40">
     {#if $projectStore.current}
       <button
@@ -133,9 +136,26 @@
       </button>
     {/if}
 
-    <div class="px-2 pt-1 flex items-center justify-between text-[11px] text-slate-500 font-mono">
-      <span>Ikemen GO Studio</span>
-      <span>v0.1.0</span>
+    <!-- Theme Switcher & Version Bar -->
+    <div class="p-1.5 rounded-xl bg-dark-800/80 border border-dark-600/50 flex items-center justify-between text-xs">
+      <div class="flex items-center gap-1.5 px-1 font-mono text-[10px] text-slate-400">
+        <span>v0.1.0</span>
+      </div>
+
+      <button
+        type="button"
+        class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-dark-700 hover:bg-dark-600 border border-dark-600/70 text-slate-200 text-xs font-medium transition shadow-sm"
+        on:click={() => settingsStore.toggleTheme()}
+        title="Toggle {$settingsStore.theme === 'light' ? 'Dark' : 'Light'} Mode"
+      >
+        {#if $settingsStore.theme === 'light'}
+          <Sun class="w-3.5 h-3.5 text-amber-500" />
+          <span class="text-[11px] font-semibold text-slate-700">Light</span>
+        {:else}
+          <Moon class="w-3.5 h-3.5 text-indigo-400" />
+          <span class="text-[11px] font-semibold text-slate-300">Dark</span>
+        {/if}
+      </button>
     </div>
   </div>
 </aside>

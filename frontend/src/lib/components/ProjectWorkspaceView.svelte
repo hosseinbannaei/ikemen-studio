@@ -115,7 +115,7 @@
 {#if $projectStore.current}
   <div class="max-w-6xl mx-auto p-8 space-y-6">
     <!-- Top Hero Banner / Project Details -->
-    <div class="p-6 rounded-2xl bg-dark-800 border {$projectStore.gameState === 'running' ? 'border-emerald-500/50 shadow-emerald-950/30' : 'border-dark-600/70'} shadow-lg relative overflow-hidden transition-all duration-300">
+    <div class="p-6 rounded-2xl bg-dark-800 border {$projectStore.gameState === 'running' ? 'border-emerald-500/50 shadow-emerald-950/30' : 'border-dark-600/70'} shadow-lg relative overflow-visible z-20 transition-all duration-300">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
         <div class="space-y-2">
           <div class="flex items-center gap-3 flex-wrap">
