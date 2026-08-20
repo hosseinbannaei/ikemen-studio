@@ -10,6 +10,7 @@
   import ProjectWorkspaceView from './lib/components/ProjectWorkspaceView.svelte';
   import ProjectRepairHubView from './lib/components/ProjectRepairHubView.svelte';
   import EngineManagerView from './lib/components/EngineManagerView.svelte';
+  import VaultView from './lib/components/VaultView.svelte';
   import SettingsView from './lib/components/SettingsView.svelte';
 
   import NewProjectModal from './lib/components/NewProjectModal.svelte';
@@ -17,7 +18,7 @@
   import CrashDiagnosticModal from './lib/components/CrashDiagnosticModal.svelte';
   import Toast from './lib/components/Toast.svelte';
 
-  let activeTab: 'projects' | 'engines' | 'settings' = 'projects';
+  let activeTab: 'projects' | 'vault' | 'engines' | 'settings' = 'projects';
   let projectsSubView: 'list' | 'workspace' | 'repair' = 'list';
 
   let showNewProjectModal = false;
@@ -34,7 +35,7 @@
     }
   });
 
-  function handleSelectTab(tab: 'projects' | 'engines' | 'settings') {
+  function handleSelectTab(tab: 'projects' | 'vault' | 'engines' | 'settings') {
     activeTab = tab;
   }
 
@@ -72,6 +73,8 @@
         ];
       }
       return [{ label: 'Projects' }];
+    } else if (activeTab === 'vault') {
+      return [{ label: 'Asset Vault' }];
     } else if (activeTab === 'engines') {
       return [{ label: 'Engines' }];
     } else {
@@ -130,6 +133,8 @@
             onOpenProjectWorkspace={handleOpenProjectWorkspace}
           />
         {/if}
+      {:else if activeTab === 'vault'}
+        <VaultView />
       {:else if activeTab === 'engines'}
         <EngineManagerView />
       {:else if activeTab === 'settings'}

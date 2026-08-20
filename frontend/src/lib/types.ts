@@ -45,6 +45,59 @@ export interface Settings {
   theme: string;
   recentProjects: string[];
   defaultChannel: string;
+  registeredVaults?: string[];
+  defaultLinkStrategy?: string;
+}
+
+export type AssetCategory = 'fighters' | 'stages' | 'motifs' | 'sounds';
+export type LinkStrategy = 'symlink' | 'hardlink' | 'copy';
+
+export interface VaultAsset {
+  key: string;
+  category: AssetCategory;
+  display_name: string;
+  author: string;
+  version_date: string;
+  mugen_version: string;
+  ikemen_version: string;
+  source_url: string;
+  source_package: string;
+  license: string;
+  tags: string[];
+  preview_image: string;
+  preview_base64?: string;
+  notes: string;
+  size_bytes: number;
+  added_at: string;
+}
+
+export interface VaultInfo {
+  id: string;
+  name: string;
+  description: string;
+  path: string;
+  asset_count: number;
+  size_bytes: number;
+  is_default: boolean;
+  created_at: string;
+}
+
+export interface AssetMetadataUpdate {
+  display_name?: string;
+  author?: string;
+  source_url?: string;
+  license?: string;
+  tags?: string[];
+  notes?: string;
+}
+
+export interface IngestResult {
+  vault_id: string;
+  detected_assets: VaultAsset[];
+  is_multi_asset: boolean;
+  source_package: string;
+  imported_count: number;
+  warnings: string[];
 }
 
 export interface DownloadProgress {

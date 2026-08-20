@@ -64,6 +64,8 @@ export namespace config {
 	    theme: string;
 	    recentProjects: string[];
 	    defaultChannel: string;
+	    registeredVaults: string[];
+	    defaultLinkStrategy: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -75,6 +77,8 @@ export namespace config {
 	        this.theme = source["theme"];
 	        this.recentProjects = source["recentProjects"];
 	        this.defaultChannel = source["defaultChannel"];
+	        this.registeredVaults = source["registeredVaults"];
+	        this.defaultLinkStrategy = source["defaultLinkStrategy"];
 	    }
 	}
 
@@ -482,6 +486,180 @@ export namespace project {
 	        this.errorMessage = source["errorMessage"];
 	        this.mode = source["mode"];
 	    }
+	}
+
+}
+
+export namespace vault {
+	
+	export class AssetMetadataUpdate {
+	    display_name: string;
+	    author: string;
+	    source_url: string;
+	    license: string;
+	    tags: string[];
+	    notes: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AssetMetadataUpdate(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.display_name = source["display_name"];
+	        this.author = source["author"];
+	        this.source_url = source["source_url"];
+	        this.license = source["license"];
+	        this.tags = source["tags"];
+	        this.notes = source["notes"];
+	    }
+	}
+	export class VaultAsset {
+	    key: string;
+	    category: string;
+	    display_name: string;
+	    author: string;
+	    version_date: string;
+	    mugen_version: string;
+	    ikemen_version: string;
+	    source_url: string;
+	    source_package: string;
+	    license: string;
+	    tags: string[];
+	    preview_image: string;
+	    preview_base64: string;
+	    notes: string;
+	    size_bytes: number;
+	    // Go type: time
+	    added_at: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new VaultAsset(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.category = source["category"];
+	        this.display_name = source["display_name"];
+	        this.author = source["author"];
+	        this.version_date = source["version_date"];
+	        this.mugen_version = source["mugen_version"];
+	        this.ikemen_version = source["ikemen_version"];
+	        this.source_url = source["source_url"];
+	        this.source_package = source["source_package"];
+	        this.license = source["license"];
+	        this.tags = source["tags"];
+	        this.preview_image = source["preview_image"];
+	        this.preview_base64 = source["preview_base64"];
+	        this.notes = source["notes"];
+	        this.size_bytes = source["size_bytes"];
+	        this.added_at = this.convertValues(source["added_at"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class IngestResult {
+	    vault_id: string;
+	    detected_assets: VaultAsset[];
+	    is_multi_asset: boolean;
+	    source_package: string;
+	    imported_count: number;
+	    warnings: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new IngestResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.vault_id = source["vault_id"];
+	        this.detected_assets = this.convertValues(source["detected_assets"], VaultAsset);
+	        this.is_multi_asset = source["is_multi_asset"];
+	        this.source_package = source["source_package"];
+	        this.imported_count = source["imported_count"];
+	        this.warnings = source["warnings"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class VaultInfo {
+	    id: string;
+	    name: string;
+	    description: string;
+	    path: string;
+	    asset_count: number;
+	    size_bytes: number;
+	    is_default: boolean;
+	    // Go type: time
+	    created_at: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new VaultInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.path = source["path"];
+	        this.asset_count = source["asset_count"];
+	        this.size_bytes = source["size_bytes"];
+	        this.is_default = source["is_default"];
+	        this.created_at = this.convertValues(source["created_at"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }

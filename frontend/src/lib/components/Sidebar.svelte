@@ -16,8 +16,8 @@
     Moon,
   } from 'lucide-svelte';
 
-  export let activeTab: 'projects' | 'engines' | 'settings';
-  export let onSelectTab: (tab: 'projects' | 'engines' | 'settings') => void;
+  export let activeTab: 'projects' | 'vault' | 'engines' | 'settings';
+  export let onSelectTab: (tab: 'projects' | 'vault' | 'engines' | 'settings') => void;
   export let onOpenProjectWorkspace: () => void;
 
   $: isRunning = $projectStore.gameState === 'running';
@@ -62,6 +62,22 @@
       {:else if $projectStore.current}
         <span class="text-[10px] font-mono opacity-80 px-1.5 py-0.2 rounded bg-black/20">Active</span>
       {/if}
+    </button>
+
+    <!-- Asset Vault Tab -->
+    <button
+      type="button"
+      class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all {
+        activeTab === 'vault'
+          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+          : 'text-slate-400 hover:text-slate-200 hover:bg-dark-700/60'
+      }"
+      on:click={() => onSelectTab('vault')}
+    >
+      <div class="flex items-center gap-2.5">
+        <Sparkles class="w-4 h-4 {activeTab === 'vault' ? 'text-white' : 'text-brand-400'}" />
+        <span>Asset Vault</span>
+      </div>
     </button>
 
     <!-- Engines Tab -->

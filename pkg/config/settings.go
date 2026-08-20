@@ -10,10 +10,12 @@ import (
 )
 
 type Settings struct {
-	EnginesDir     string   `json:"enginesDir"`
-	Theme          string   `json:"theme"`
-	RecentProjects []string `json:"recentProjects"`
-	DefaultChannel string   `json:"defaultChannel"`
+	EnginesDir          string   `json:"enginesDir"`
+	Theme               string   `json:"theme"`
+	RecentProjects      []string `json:"recentProjects"`
+	DefaultChannel      string   `json:"defaultChannel"`
+	RegisteredVaults    []string `json:"registeredVaults"`
+	DefaultLinkStrategy string   `json:"defaultLinkStrategy"`
 }
 
 var (
@@ -46,6 +48,31 @@ func GetDefaultEnginesDir() string {
 	}
 }
 
+// GetDefaultVaultsDir returns the platform-specific default base directory for Vaults
+func GetDefaultVaultsDir() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		homeDir = "."
+	}
+
+	switch runtime.GOOS {
+	case "windows":
+		localAppData := os.Getenv("LOCALAPPDATA")
+		if localAppData != "" {
+			return filepath.Join(localAppData, "ikemen-studio", "vaults")
+		}
+		return filepath.Join(homeDir, "AppData", "Local", "ikemen-studio", "vaults")
+	case "darwin":
+		return filepath.Join(homeDir, "Library", "Application Support", "ikemen-studio", "vaults")
+	default: // linux, bsd, etc.
+		xdgData := os.Getenv("XDG_DATA_HOME")
+		if xdgData != "" {
+			return filepath.Join(xdgData, "ikemen-studio", "vaults")
+		}
+		return filepath.Join(homeDir, ".local", "share", "ikemen-studio", "vaults")
+	}
+}
+
 // GetConfigPath returns the platform-specific configuration file path
 func GetConfigPath() string {
 	homeDir, err := os.UserHomeDir()
@@ -74,10 +101,12 @@ func GetConfigPath() string {
 // DefaultSettings returns fresh default configuration
 func DefaultSettings() Settings {
 	return Settings{
-		EnginesDir:     GetDefaultEnginesDir(),
-		Theme:          "dark",
-		RecentProjects: []string{},
-		DefaultChannel: "stable",
+		EnginesDir:          GetDefaultEnginesDir(),
+		Theme:               "dark",
+		RecentProjects:      []string{},
+		DefaultChannel:      "stable",
+		RegisteredVaults:    []string{},
+		DefaultLinkStrategy: "symlink",
 	}
 }
 
@@ -119,6 +148,12 @@ func LoadSettings() (*Settings, error) {
 	}
 	if s.RecentProjects == nil {
 		s.RecentProjects = []string{}
+	}
+	if s.RegisteredVaults == nil {
+		s.RegisteredVaults = []string{}
+	}
+	if s.DefaultLinkStrategy == "" {
+		s.DefaultLinkStrategy = "symlink"
 	}
 
 	cachedSettings = &s
@@ -170,4 +205,3 @@ func RemoveRecentProject(projectDir string) error {
 	cfg.RecentProjects = updated
 	return saveSettingsLocked(cfg)
 }
-

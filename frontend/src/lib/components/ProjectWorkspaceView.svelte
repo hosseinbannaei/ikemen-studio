@@ -8,6 +8,7 @@
   import CustomLaunchModal from './CustomLaunchModal.svelte';
   import GameConfigModal from './GameConfigModal.svelte';
   import ConfirmModal from './ConfirmModal.svelte';
+  import AddFromVaultModal from './AddFromVaultModal.svelte';
   import {
     Play,
     Square,
@@ -31,6 +32,8 @@
     Terminal,
     RotateCcw,
     Sparkles,
+    Package,
+    Plus
   } from 'lucide-svelte';
 
   export let onBackToProjects: () => void;
@@ -42,6 +45,8 @@
   let showGameConfigModal = false;
   let showEngineConfirmModal = false;
   let showRollbackModal = false;
+  let showAddFromVaultModal = false;
+  let vaultTargetCategory: 'fighters' | 'stages' = 'fighters';
   let selectedBackupId = '';
   let pendingEngineVersion = '';
   let selectedEngineVersion = '';
@@ -55,12 +60,17 @@
   let showPlayDropdown = false;
 
   const folderShortcuts = [
-    { label: 'Characters', subpath: 'chars', icon: Users, desc: 'Fighter packages and .def files', color: 'from-blue-500/20 to-cyan-500/20 text-cyan-400 border-cyan-500/30' },
-    { label: 'Stages', subpath: 'stages', icon: Mountain, desc: 'Background arenas and music defs', color: 'from-emerald-500/20 to-teal-500/20 text-emerald-400 border-emerald-500/30' },
+    { label: 'Characters', subpath: 'chars', icon: Users, desc: 'Fighter packages and .def files', color: 'from-blue-500/20 to-cyan-500/20 text-cyan-400 border-cyan-500/30', category: 'fighters' },
+    { label: 'Stages', subpath: 'stages', icon: Mountain, desc: 'Background arenas and music defs', color: 'from-emerald-500/20 to-teal-500/20 text-emerald-400 border-emerald-500/30', category: 'stages' },
     { label: 'System Data', subpath: 'data', icon: FileCode, desc: 'select.def, system.def, fonts', color: 'from-amber-500/20 to-orange-500/20 text-amber-400 border-amber-500/30' },
     { label: 'Fonts', subpath: 'font', icon: Type, desc: 'Bitmap and TrueType font assets', color: 'from-purple-500/20 to-pink-500/20 text-purple-400 border-purple-500/30' },
     { label: 'Sound & Music', subpath: 'sound', icon: Music, desc: 'BGM tracks, hits, and announcer voices', color: 'from-rose-500/20 to-red-500/20 text-rose-400 border-rose-500/30' },
   ];
+
+  function handleOpenVaultFor(cat: 'fighters' | 'stages') {
+    vaultTargetCategory = cat;
+    showAddFromVaultModal = true;
+  }
 
   function handleVerifyClick() {
     onOpenRepairHub();
@@ -209,6 +219,17 @@
 
         <!-- Action Controls -->
         <div class="flex items-center gap-2 flex-wrap">
+          <!-- Add from Vault -->
+          <button
+            type="button"
+            class="px-3 py-2.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 border border-brand-500/40 text-brand-300 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+            on:click={() => handleOpenVaultFor('fighters')}
+            title="Link fighters and stages from your Vault library"
+          >
+            <Sparkles class="w-3.5 h-3.5 text-brand-400" />
+            <span>+ From Vault</span>
+          </button>
+
           <!-- Game Settings (config.ini) -->
           <button
             type="button"
@@ -527,6 +548,16 @@
       confirmVariant="primary"
       onConfirm={confirmRollback}
       onCancel={() => (showRollbackModal = false)}
+    />
+  {/if}
+
+  <!-- Add From Vault Modal -->
+  {#if showAddFromVaultModal}
+    <AddFromVaultModal
+      isOpen={showAddFromVaultModal}
+      projectDir={$projectStore.current.path}
+      targetCategory={vaultTargetCategory}
+      onClose={() => (showAddFromVaultModal = false)}
     />
   {/if}
 {/if}

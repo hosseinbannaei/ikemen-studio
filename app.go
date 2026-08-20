@@ -16,6 +16,7 @@ import (
 	"ikemen-studio/pkg/config"
 	"ikemen-studio/pkg/engine"
 	"ikemen-studio/pkg/project"
+	"ikemen-studio/pkg/vault"
 )
 
 // App struct
@@ -23,12 +24,15 @@ type App struct {
 	ctx             context.Context
 	downloadsMu     sync.Mutex
 	activeDownloads map[string]context.CancelFunc
+	vaultManager    *vault.VaultManager
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
+	vm, _ := vault.NewVaultManager()
 	return &App{
 		activeDownloads: make(map[string]context.CancelFunc),
+		vaultManager:    vm,
 	}
 }
 
@@ -36,6 +40,11 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	runtime.OnFileDrop(ctx, func(x, y int, paths []string) {
+		if len(paths) > 0 {
+			runtime.EventsEmit(ctx, "wails-file-drop", paths)
+		}
+	})
 }
 
 // --- Settings APIs ---
@@ -580,3 +589,151 @@ func (a *App) OpenFolderInExplorer(folderPath string) error {
 	}
 	return cmd.Start()
 }
+
+// --- Vault APIs ---
+
+// GetVaults returns all registered vaults
+func (a *App) GetVaults() ([]vault.VaultInfo, error) {
+	if a.vaultManager == nil {
+		vm, err := vault.NewVaultManager()
+		if err != nil {
+			return nil, err
+		}
+		a.vaultManager = vm
+	}
+	return a.vaultManager.GetVaults()
+}
+
+// CreateVault initializes a new vault at target path or default
+func (a *App) CreateVault(name, description, targetPath string) (*vault.VaultInfo, error) {
+	if a.vaultManager == nil {
+		vm, _ := vault.NewVaultManager()
+		a.vaultManager = vm
+	}
+	return a.vaultManager.CreateVault(name, description, targetPath)
+}
+
+// RegisterVault mounts an existing vault folder
+func (a *App) RegisterVault(vaultPath string) (*vault.VaultInfo, error) {
+	if a.vaultManager == nil {
+		vm, _ := vault.NewVaultManager()
+		a.vaultManager = vm
+	}
+	return a.vaultManager.RegisterVault(vaultPath)
+}
+
+// UnregisterVault unmounts a vault from settings
+func (a *App) UnregisterVault(vaultID string) error {
+	if a.vaultManager == nil {
+		vm, _ := vault.NewVaultManager()
+		a.vaultManager = vm
+	}
+	return a.vaultManager.UnregisterVault(vaultID)
+}
+
+// GetVaultAssets returns indexed assets for a vault (or all vaults if vaultID is 'all')
+func (a *App) GetVaultAssets(vaultID string) ([]vault.VaultAsset, error) {
+	if a.vaultManager == nil {
+		vm, _ := vault.NewVaultManager()
+		a.vaultManager = vm
+	}
+	return a.vaultManager.GetVaultAssets(vaultID)
+}
+
+// UpdateVaultAsset updates metadata, tags, and notes for an asset
+func (a *App) UpdateVaultAsset(vaultID, assetKey string, update vault.AssetMetadataUpdate) error {
+	if a.vaultManager == nil {
+		vm, _ := vault.NewVaultManager()
+		a.vaultManager = vm
+	}
+	return a.vaultManager.UpdateVaultAsset(vaultID, assetKey, update)
+}
+
+// DeleteVaultAsset removes an asset from vault manifest and disk
+func (a *App) DeleteVaultAsset(vaultID, assetKey string) error {
+	if a.vaultManager == nil {
+		vm, _ := vault.NewVaultManager()
+		a.vaultManager = vm
+	}
+	return a.vaultManager.DeleteVaultAsset(vaultID, assetKey)
+}
+
+// IngestAsset extracts and installs an archive or folder into a vault
+func (a *App) IngestAsset(vaultID, srcPath, targetMode string) (*vault.IngestResult, error) {
+	if a.vaultManager == nil {
+		vm, _ := vault.NewVaultManager()
+		a.vaultManager = vm
+	}
+	return a.vaultManager.IngestAsset(vaultID, srcPath, targetMode)
+}
+
+// IngestAssets extracts and installs multiple archives or folders into a vault
+func (a *App) IngestAssets(vaultID string, srcPaths []string, targetMode string) (*vault.IngestResult, error) {
+	if a.vaultManager == nil {
+		vm, _ := vault.NewVaultManager()
+		a.vaultManager = vm
+	}
+	return a.vaultManager.IngestMultiple(vaultID, srcPaths, targetMode)
+}
+
+// AddVaultAssetToProject connects a vault asset into the project via symlink/hardlink/copy
+func (a *App) AddVaultAssetToProject(projectDir, vaultID, assetKey string) error {
+	if a.vaultManager == nil {
+		vm, _ := vault.NewVaultManager()
+		a.vaultManager = vm
+	}
+
+	cfg, _ := config.LoadSettings()
+	strategy := vault.LinkStrategySymlink
+	if cfg != nil && cfg.DefaultLinkStrategy != "" {
+		strategy = vault.LinkStrategy(cfg.DefaultLinkStrategy)
+	}
+
+	_, vaultPath, err := a.vaultManager.GetVault(vaultID)
+	if err != nil {
+		return err
+	}
+
+	return vault.LinkAssetToProject(projectDir, vaultPath, assetKey, strategy)
+}
+
+// RemoveVaultAssetFromProject removes linked asset from project and updates select.def
+func (a *App) RemoveVaultAssetFromProject(projectDir, assetKey string) error {
+	return vault.RemoveAssetFromProject(projectDir, assetKey)
+}
+
+// SelectArchiveDialog opens a file picker for .zip, .rar, .7z, .tar.gz archives
+func (a *App) SelectArchiveDialog() (string, error) {
+	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Asset Archive or Package",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "All Archives (*.zip, *.rar, *.7z, *.tar.gz, *.tgz, *.tar)",
+				Pattern:     "*.zip;*.rar;*.7z;*.tar.gz;*.tgz;*.tar;*.bz2;*.xz",
+			},
+			{
+				DisplayName: "All Files (*.*)",
+				Pattern:     "*.*",
+			},
+		},
+	})
+}
+
+// SelectMultipleArchivesDialog opens a multi-file picker for archives
+func (a *App) SelectMultipleArchivesDialog() ([]string, error) {
+	return runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Asset Archives (Multiple Selection Supported)",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "All Archives (*.zip, *.rar, *.7z, *.tar.gz, *.tgz, *.tar)",
+				Pattern:     "*.zip;*.rar;*.7z;*.tar.gz;*.tgz;*.tar;*.bz2;*.xz",
+			},
+			{
+				DisplayName: "All Files (*.*)",
+				Pattern:     "*.*",
+			},
+		},
+	})
+}
+
+
