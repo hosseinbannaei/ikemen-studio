@@ -9,5 +9,6 @@
   "author": {
     "name": "hosseinbannaei",
     "email": "hosseinbannaei@gmail.com"
-  }
+  },
+  "build:tags": "webkit2_41"
 }
