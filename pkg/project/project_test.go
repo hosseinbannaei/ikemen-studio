@@ -197,3 +197,18 @@ func TestVerifyAndRepairCoreSystemMode(t *testing.T) {
 		t.Errorf("custom select.def was modified! content: %s", string(selectContent))
 	}
 }
+
+func TestDetectLegacyEngineVersion(t *testing.T) {
+	// Test folder with nightly name
+	tmpDir, err := os.MkdirTemp("", "ikemen-dev-linux-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	ver := DetectLegacyEngineVersion(tmpDir)
+	if ver != "nightly" {
+		t.Errorf("expected 'nightly' for folder name with dev, got %s", ver)
+	}
+}
+
