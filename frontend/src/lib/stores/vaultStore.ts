@@ -227,8 +227,18 @@ function createVaultStore() {
   }
 
   async function ingest(filePath: string, vaultId: string, targetMode = 'auto'): Promise<IngestResult | null> {
-
     return ingestMultiple([filePath], vaultId, targetMode);
+  }
+
+  async function ingestAsset(filePath: string, category = 'auto', vaultId?: string): Promise<IngestResult | null> {
+    let targetVault = vaultId || '';
+    if (!targetVault) {
+      update((s) => {
+        targetVault = s.activeVaultId !== 'all' ? s.activeVaultId : 'vault-default';
+        return s;
+      });
+    }
+    return ingestMultiple([filePath], targetVault, category);
   }
 
   async function ingestMultiple(filePaths: string[], vaultId: string, targetMode = 'auto'): Promise<IngestResult | null> {
@@ -348,6 +358,7 @@ function createVaultStore() {
     deleteAsset,
     cleanAndRepair,
     ingest,
+    ingestAsset,
     ingestMultiple,
     linkToProject,
     unlinkFromProject,

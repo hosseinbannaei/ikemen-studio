@@ -122,11 +122,17 @@
       case 'fighters':
         return 'bg-rose-500/20 text-rose-300 border-rose-500/30';
       case 'stages':
-        return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+        return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
       case 'motifs':
-        return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
+        return 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30';
+      case 'lifebars':
+        return 'bg-pink-500/20 text-pink-300 border-pink-500/30';
       case 'sounds':
-        return 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
+        return 'bg-rose-500/20 text-rose-300 border-rose-500/30';
+      case 'fonts':
+        return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
+      case 'storyboards':
+        return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
       default:
         return 'bg-slate-500/20 text-slate-300 border-slate-500/30';
     }
@@ -211,8 +217,11 @@
     { id: 'all', label: 'All Items' },
     { id: 'fighters', label: 'Fighters' },
     { id: 'stages', label: 'Stages' },
-    { id: 'motifs', label: 'Screenpacks & Lifebars' },
-    { id: 'sounds', label: 'Sounds & Audio' },
+    { id: 'motifs', label: 'Screenpacks' },
+    { id: 'lifebars', label: 'Lifebars' },
+    { id: 'sounds', label: 'Sound & Music' },
+    { id: 'fonts', label: 'Fonts' },
+    { id: 'storyboards', label: 'Storyboards' },
   ];
 </script>
 

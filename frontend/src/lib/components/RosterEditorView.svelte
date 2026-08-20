@@ -236,10 +236,10 @@
     const activeSlots = roster.slots.filter((s) => s.type !== 'empty');
     activeSlots.sort((a, b) => {
       if (criteria === 'name_asc') {
-        return (a.display_name || a.character).localeCompare(b.display_name || b.character);
+        return (a.display_name || a.character || '').localeCompare(b.display_name || b.character || '');
       }
       if (criteria === 'name_desc') {
-        return (b.display_name || b.character).localeCompare(a.display_name || a.character);
+        return (b.display_name || b.character || '').localeCompare(a.display_name || a.character || '');
       }
       if (criteria === 'author') {
         return (a.author || '').localeCompare(b.author || '');
