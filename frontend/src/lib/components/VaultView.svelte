@@ -17,9 +17,18 @@
     X,
     Plus,
     LayoutGrid,
-    List
+    List,
+    CheckSquare,
+    Square,
+    ArrowUpDown,
+    DownloadCloud,
+    FolderDown,
+    Link2,
+    Check
   } from 'lucide-svelte';
   import { vaultStore, filteredAssets } from '../stores/vaultStore';
+  import { projectStore } from '../stores/projectStore';
+  import { toastStore } from '../stores/toastStore';
   import VaultCard from './VaultCard.svelte';
   import VaultInspector from './VaultInspector.svelte';
   import CreateVaultModal from './CreateVaultModal.svelte';
@@ -31,10 +40,76 @@
   let isDraggingOver = false;
   let viewMode: 'grid' | 'list' = 'grid';
 
+  // Multi-selection state
+  let selectedKeys = new Set<string>();
+  let sortBy: 'name_asc' | 'name_desc' | 'size_desc' | 'category' = 'name_asc';
+  let isPerformingBulkAction = false;
+
   onMount(async () => {
     await vaultStore.loadVaults();
     await vaultStore.loadAssets();
   });
+
+  function toggleSelectKey(key: string) {
+    if (selectedKeys.has(key)) {
+      selectedKeys.delete(key);
+    } else {
+      selectedKeys.add(key);
+    }
+    selectedKeys = new Set(selectedKeys);
+  }
+
+  function selectAll() {
+    selectedKeys = new Set($filteredAssets.map((a) => a.key));
+  }
+
+  function deselectAll() {
+    selectedKeys = new Set();
+  }
+
+  async function handleBulkAddToProject() {
+    if (!$projectStore.current) {
+      toastStore.warning('No Project Open', 'Please open or create a project first.');
+      return;
+    }
+    if (selectedKeys.size === 0) return;
+
+    isPerformingBulkAction = true;
+    let addedCount = 0;
+    const targetDir = $projectStore.current.path;
+
+    for (const key of selectedKeys) {
+      const asset = $vaultStore.assets.find((a) => a.key === key);
+      const vaultId = (asset as any)?.vault_id || $vaultStore.activeVaultId || 'vault-default';
+      const ok = await vaultStore.linkToProject(targetDir, vaultId, key);
+      if (ok) addedCount++;
+    }
+
+    isPerformingBulkAction = false;
+    toastStore.success('Bulk Import Complete', `Added ${addedCount} asset(s) to project`);
+    deselectAll();
+  }
+
+  async function handleBulkDelete() {
+    if (selectedKeys.size === 0) return;
+    if (!confirm(`Are you sure you want to permanently delete ${selectedKeys.size} selected item(s) from the Vault?`)) {
+      return;
+    }
+
+    isPerformingBulkAction = true;
+    let deletedCount = 0;
+
+    for (const key of selectedKeys) {
+      const asset = $vaultStore.assets.find((a) => a.key === key);
+      const vaultId = (asset as any)?.vault_id || $vaultStore.activeVaultId || 'vault-default';
+      const ok = await vaultStore.deleteAsset(vaultId, key);
+      if (ok) deletedCount++;
+    }
+
+    isPerformingBulkAction = false;
+    toastStore.info('Bulk Delete Finished', `Removed ${deletedCount} asset(s) from vault`);
+    deselectAll();
+  }
 
   function formatBytes(bytes: number): string {
     if (!bytes) return '0 B';
@@ -56,6 +131,17 @@
         return 'bg-slate-500/20 text-slate-300 border-slate-500/30';
     }
   }
+
+  // Sorted and filtered list
+  $: sortedAssets = [...$filteredAssets].sort((a, b) => {
+    const nameA = (a.display_name || a.key).toLowerCase();
+    const nameB = (b.display_name || b.key).toLowerCase();
+    if (sortBy === 'name_asc') return nameA.localeCompare(nameB);
+    if (sortBy === 'name_desc') return nameB.localeCompare(nameA);
+    if (sortBy === 'size_desc') return (b.size_bytes || 0) - (a.size_bytes || 0);
+    if (sortBy === 'category') return a.category.localeCompare(b.category);
+    return 0;
+  });
 
   // Extract all unique tags across currently loaded assets
   $: allTags = Array.from(
@@ -229,12 +315,56 @@
         </div>
 
         <div class="flex items-center gap-2.5">
+          <!-- Sort Dropdown -->
+          <div class="flex items-center gap-1.5 bg-dark-950 px-2.5 py-1.5 rounded-xl border border-dark-700/60 text-xs">
+            <ArrowUpDown class="w-3.5 h-3.5 text-slate-400" />
+            <select
+              bind:value={sortBy}
+              class="bg-transparent text-slate-300 text-xs font-medium focus:outline-none cursor-pointer"
+            >
+              <option value="name_asc" class="bg-dark-900">Name (A-Z)</option>
+              <option value="name_desc" class="bg-dark-900">Name (Z-A)</option>
+              <option value="size_desc" class="bg-dark-900">Largest Size</option>
+              <option value="category" class="bg-dark-900">Category</option>
+            </select>
+          </div>
+
+          <!-- Select All / Deselect Toggle -->
+          <button
+            type="button"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition text-xs font-semibold {
+              selectedKeys.size > 0 && selectedKeys.size === $filteredAssets.length
+                ? 'bg-brand-600 text-white border-brand-500'
+                : selectedKeys.size > 0
+                ? 'bg-brand-500/20 text-brand-300 border-brand-500/40'
+                : 'bg-dark-950 text-slate-400 border-dark-700/60 hover:text-slate-200'
+            }"
+            on:click={() => {
+              if (selectedKeys.size === $filteredAssets.length) {
+                deselectAll();
+              } else {
+                selectAll();
+              }
+            }}
+          >
+            {#if selectedKeys.size === $filteredAssets.length && $filteredAssets.length > 0}
+              <CheckSquare class="w-3.5 h-3.5" />
+              <span>All Selected</span>
+            {:else if selectedKeys.size > 0}
+              <CheckSquare class="w-3.5 h-3.5 text-brand-400" />
+              <span>{selectedKeys.size} Selected</span>
+            {:else}
+              <Square class="w-3.5 h-3.5" />
+              <span>Select All</span>
+            {/if}
+          </button>
+
           <!-- Search Bar -->
-          <div class="relative w-72">
+          <div class="relative w-64">
             <Search class="absolute left-3.5 top-2.5 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search characters, authors, tags..."
+              placeholder="Search characters, authors..."
               bind:value={$vaultStore.searchQuery}
               class="w-full bg-dark-950 border border-dark-600/80 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500 transition"
             />
@@ -296,8 +426,8 @@
     </header>
 
     <!-- Asset Cards / List View Container -->
-    <div class="flex-1 overflow-y-auto p-6">
-      {#if $filteredAssets.length === 0}
+    <div class="flex-1 overflow-y-auto p-6 relative">
+      {#if sortedAssets.length === 0}
         <!-- Empty State -->
         <div class="h-full flex flex-col items-center justify-center p-12 text-center text-slate-500 border-2 border-dashed border-dark-700/60 rounded-3xl">
           <Package class="w-16 h-16 stroke-1 opacity-40 mb-3" />
@@ -317,9 +447,11 @@
       {:else if viewMode === 'grid'}
         <!-- Grid View -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {#each $filteredAssets as asset (asset.key)}
+          {#each sortedAssets as asset (asset.key)}
             <VaultCard
               {asset}
+              selected={selectedKeys.has(asset.key)}
+              onToggleSelect={(a) => toggleSelectKey(a.key)}
               onSelect={(a) => vaultStore.setSelectedAsset(a)}
             />
           {/each}
@@ -330,7 +462,23 @@
           <table class="w-full text-left text-xs border-collapse">
             <thead>
               <tr class="bg-dark-900/80 border-b border-dark-700/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 select-none">
-                <th class="py-3 px-4 w-16">Preview</th>
+                <th class="py-3 px-3 w-10 text-center">
+                  <button
+                    type="button"
+                    class="text-slate-400 hover:text-white"
+                    on:click={() => {
+                      if (selectedKeys.size === sortedAssets.length) deselectAll();
+                      else selectAll();
+                    }}
+                  >
+                    {#if selectedKeys.size === sortedAssets.length && sortedAssets.length > 0}
+                      <CheckSquare class="w-4 h-4 text-brand-400" />
+                    {:else}
+                      <Square class="w-4 h-4" />
+                    {/if}
+                  </button>
+                </th>
+                <th class="py-3 px-3 w-14">Preview</th>
                 <th class="py-3 px-4">Name & Folder</th>
                 <th class="py-3 px-4">Author</th>
                 <th class="py-3 px-4">Category</th>
@@ -341,13 +489,25 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-dark-700/50">
-              {#each $filteredAssets as asset (asset.key)}
+              {#each sortedAssets as asset (asset.key)}
+                {@const isSelected = selectedKeys.has(asset.key)}
                 <tr
-                  class="hover:bg-dark-800/80 cursor-pointer transition group"
+                  class="cursor-pointer transition group {isSelected ? 'bg-brand-950/30 hover:bg-brand-950/40' : 'hover:bg-dark-800/80'}"
                   on:click={() => vaultStore.setSelectedAsset(asset)}
                 >
+                  <!-- Selection Checkbox -->
+                  <td class="py-2.5 px-3 text-center" on:click|stopPropagation={() => toggleSelectKey(asset.key)}>
+                    <button type="button" class="text-slate-400 hover:text-white">
+                      {#if isSelected}
+                        <CheckSquare class="w-4 h-4 text-brand-400" />
+                      {:else}
+                        <Square class="w-4 h-4" />
+                      {/if}
+                    </button>
+                  </td>
+
                   <!-- Thumbnail -->
-                  <td class="py-2.5 px-4">
+                  <td class="py-2.5 px-3">
                     <div class="w-10 h-10 rounded-xl bg-dark-900 border border-dark-700/80 overflow-hidden flex items-center justify-center flex-shrink-0">
                       {#if asset.preview_base64}
                         <img src={asset.preview_base64} alt={asset.display_name} class="w-full h-full object-contain" />
@@ -420,6 +580,46 @@
               {/each}
             </tbody>
           </table>
+        </div>
+      {/if}
+
+      <!-- Floating Bulk Action Toolbar -->
+      {#if selectedKeys.size > 0}
+        <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 bg-dark-850/95 border border-brand-500/60 backdrop-blur-xl shadow-2xl rounded-2xl px-5 py-3 flex items-center gap-4 animate-in slide-in-from-bottom-4">
+          <div class="flex items-center gap-2 pr-3 border-r border-dark-700">
+            <span class="w-2.5 h-2.5 rounded-full bg-brand-400 animate-pulse"></span>
+            <span class="text-xs font-bold text-slate-100">{selectedKeys.size} item(s) selected</span>
+          </div>
+
+          {#if $projectStore.current}
+            <button
+              type="button"
+              disabled={isPerformingBulkAction}
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold transition shadow-md shadow-brand-600/20 disabled:opacity-50"
+              on:click={handleBulkAddToProject}
+            >
+              <FolderDown class="w-3.5 h-3.5" />
+              <span>Add to {$projectStore.current.name}</span>
+            </button>
+          {/if}
+
+          <button
+            type="button"
+            disabled={isPerformingBulkAction}
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-bold transition disabled:opacity-50"
+            on:click={handleBulkDelete}
+          >
+            <Trash2 class="w-3.5 h-3.5" />
+            <span>Delete Selected</span>
+          </button>
+
+          <button
+            type="button"
+            class="px-2.5 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 text-xs font-semibold hover:bg-dark-700 transition"
+            on:click={deselectAll}
+          >
+            Deselect All
+          </button>
         </div>
       {/if}
     </div>

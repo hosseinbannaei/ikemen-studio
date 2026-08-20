@@ -15,7 +15,9 @@
   import { vaultStore } from '../stores/vaultStore';
 
   export let asset: VaultAsset;
+  export let selected: boolean = false;
   export let onSelect: (asset: VaultAsset) => void = () => {};
+  export let onToggleSelect: ((asset: VaultAsset) => void) | null = null;
   export let onQuickAdd: ((asset: VaultAsset) => void) | null = null;
 
   function formatSize(bytes: number): string {
@@ -58,7 +60,11 @@
 <div
   role="button"
   tabindex="0"
-  class="group relative flex flex-col rounded-2xl bg-dark-800/90 border border-dark-600/70 hover:border-brand-500/60 hover:shadow-xl hover:shadow-brand-500/5 transition-all duration-200 overflow-hidden cursor-pointer text-left"
+  class="group relative flex flex-col rounded-2xl transition-all duration-200 overflow-hidden cursor-pointer text-left {
+    selected
+      ? 'bg-brand-950/40 border-2 border-brand-500 shadow-xl shadow-brand-950/40'
+      : 'bg-dark-800/90 border border-dark-600/70 hover:border-brand-500/60 hover:shadow-xl hover:shadow-brand-500/5'
+  }"
   on:click={() => onSelect(asset)}
   on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelect(asset); }}
 >
@@ -75,6 +81,21 @@
         <User class="w-10 h-10 stroke-1 opacity-40" />
         <span class="text-[10px] font-medium tracking-wider uppercase opacity-60">Preview</span>
       </div>
+    {/if}
+
+    <!-- Selection Checkbox at top right -->
+    {#if onToggleSelect}
+      <button
+        type="button"
+        class="absolute top-2.5 right-2.5 z-20 w-6 h-6 rounded-lg border transition-all flex items-center justify-center {
+          selected
+            ? 'bg-brand-500 border-brand-400 text-white shadow-md'
+            : 'bg-dark-900/80 border-dark-600/80 text-transparent group-hover:border-slate-400 backdrop-blur-md'
+        }"
+        on:click|stopPropagation={() => onToggleSelect && onToggleSelect(asset)}
+      >
+        <span class="text-xs font-bold {selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-40 text-white'}">✓</span>
+      </button>
     {/if}
 
     <!-- Badges overlay -->

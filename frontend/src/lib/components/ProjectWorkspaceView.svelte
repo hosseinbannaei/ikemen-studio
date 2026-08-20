@@ -717,11 +717,13 @@
                 <span>Open</span>
               </button>
 
-              {#if sc.canAddVault}
+              {#if sc.canAddVault && sc.category}
                 <button
                   type="button"
                   class="py-1.5 px-2 bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 text-[11px] font-medium rounded-lg border border-brand-500/20 transition flex items-center justify-center gap-1"
-                  on:click={() => handleOpenVaultFor(sc.category)}
+                  on:click={() => {
+                    if (sc.category) handleOpenVaultFor(sc.category);
+                  }}
                   title="Add {sc.label} from Vault library"
                 >
                   <Plus class="w-3 h-3" />
