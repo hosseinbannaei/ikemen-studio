@@ -113,6 +113,18 @@ func (vm *VaultManager) GetVaults() ([]VaultInfo, error) {
 			continue // Skip invalid/deleted paths
 		}
 
+		manifestChanged := false
+		for key, asset := range manifest.Assets {
+			assetDiskPath := filepath.Join(cleanP, asset.Key)
+			if _, err := os.Stat(assetDiskPath); os.IsNotExist(err) {
+				delete(manifest.Assets, key)
+				manifestChanged = true
+			}
+		}
+		if manifestChanged {
+			_ = SaveManifest(cleanP, manifest)
+		}
+
 		isDef := strings.EqualFold(cleanP, defaultVaultPath) || manifest.ID == "vault-default"
 
 		vaults = append(vaults, VaultInfo{
@@ -293,17 +305,29 @@ func (vm *VaultManager) GetVaultAssets(vaultID string) ([]VaultAsset, error) {
 			continue
 		}
 
-		for _, asset := range manifest.Assets {
+		manifestChanged := false
+		for key, asset := range manifest.Assets {
+			// Verify that the asset folder still exists on disk
+			assetDiskPath := filepath.Join(v.Path, asset.Key)
+			if _, err := os.Stat(assetDiskPath); os.IsNotExist(err) {
+				delete(manifest.Assets, key)
+				manifestChanged = true
+				continue
+			}
+
 			// Populate preview base64 if not already cached
 			if asset.PreviewImage != "" && asset.PreviewBase64 == "" {
 				fullPreviewPath := filepath.Join(v.Path, asset.PreviewImage)
 				if _, err := os.Stat(fullPreviewPath); err == nil {
-					// We can lazy load or extract
 					_, b64, _ := ExtractAndCachePortrait(v.Path, asset.Key, "")
 					asset.PreviewBase64 = b64
 				}
 			}
 			allAssets = append(allAssets, asset)
+		}
+
+		if manifestChanged {
+			_ = SaveManifest(v.Path, manifest)
 		}
 	}
 
