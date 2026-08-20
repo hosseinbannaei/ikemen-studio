@@ -332,6 +332,7 @@
 
   function selectOrActivateSlot(idx: number, e?: MouseEvent) {
     ensureSlotCapacity(idx);
+    roster && (roster.slots = [...roster.slots]);
     if (isGridSelectMode || (e && (e.shiftKey || e.ctrlKey || e.metaKey))) {
       toggleGridSlotSelect(idx);
       selectedSlotIndex = idx;
@@ -357,7 +358,7 @@
     exportingToVault = false;
   }
 
-  $: selectedSlot = roster && selectedSlotIndex !== null && roster.slots[selectedSlotIndex]
+  $: selectedSlot = roster && selectedSlotIndex !== null && selectedSlotIndex < roster.slots.length
     ? roster.slots[selectedSlotIndex]
     : null;
 
@@ -1300,7 +1301,21 @@
           <div class="space-y-1.5">
             <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Slot Type</label>
             <select
-              bind:value={selectedSlot.type}
+              value={selectedSlot.type}
+              on:change={(e) => {
+                if (selectedSlotIndex !== null && roster && roster.slots[selectedSlotIndex]) {
+                  const newType = e.currentTarget.value as RosterCharacterSlot['type'];
+                  const s = roster.slots[selectedSlotIndex];
+                  if (newType === 'empty') {
+                    roster.slots[selectedSlotIndex] = { index: selectedSlotIndex, type: 'empty', character: '', include_in_arcade: true };
+                  } else if (newType === 'randomselect') {
+                    roster.slots[selectedSlotIndex] = { index: selectedSlotIndex, type: 'randomselect', character: 'randomselect', display_name: 'Random Select', include_in_arcade: true };
+                  } else {
+                    roster.slots[selectedSlotIndex] = { ...s, type: newType };
+                  }
+                  roster.slots = [...roster.slots];
+                }
+              }}
               class="w-full bg-dark-800 border border-dark-600 rounded-xl px-3 py-2 text-xs text-slate-100 font-semibold focus:outline-none focus:border-indigo-500"
             >
               <option value="character">Character</option>
@@ -1337,6 +1352,7 @@
                 </label>
                 <select
                   bind:value={selectedSlot.home_stage}
+                  on:change={() => { roster && (roster.slots = [...roster.slots]); }}
                   class="w-full bg-dark-800 border border-dark-600 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
                 >
                   <option value="">Default (No specific stage)</option>
