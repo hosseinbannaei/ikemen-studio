@@ -159,6 +159,7 @@ export interface AssetSyncOptions {
   syncStockStages?: boolean;
   syncScreenpack?: boolean;
   syncFonts?: boolean;
+  syncSound?: boolean;
   syncRuntime?: boolean;
   resetConfig?: boolean;
 }

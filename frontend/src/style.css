@@ -35,6 +35,10 @@ html, body {
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
+*, ::before, ::after {
+  border-color: rgb(var(--bg-border-rgb) / 0.7);
+}
+
 html.light, html.light body {
   color: #1e293b;
 }

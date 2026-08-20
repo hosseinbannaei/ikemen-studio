@@ -7,6 +7,9 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      borderColor: {
+        DEFAULT: 'rgb(var(--bg-border-rgb) / <alpha-value>)',
+      },
       colors: {
         dark: {
           900: 'rgb(var(--bg-app-rgb) / <alpha-value>)',

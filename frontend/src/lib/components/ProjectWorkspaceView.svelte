@@ -222,20 +222,20 @@
             <span>Logs</span>
           </button>
 
-          <!-- Verify & Repair -->
+          <!-- Repair Hub -->
           <button
             type="button"
             disabled={isVerifying || isBusy}
             class="px-3 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 disabled:opacity-50 border border-dark-600/70 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
             on:click={handleVerifyClick}
-            title="Verify and repair core engine files"
+            title="Open Maintenance & Repair Hub"
           >
             {#if isVerifying}
               <Loader2 class="w-3.5 h-3.5 animate-spin text-indigo-400" />
-              <span>Verifying...</span>
+              <span>Checking...</span>
             {:else}
               <Wrench class="w-3.5 h-3.5 text-purple-400" />
-              <span>Verify</span>
+              <span>Repair Hub</span>
             {/if}
           </button>
 

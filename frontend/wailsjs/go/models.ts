@@ -198,6 +198,7 @@ export namespace project {
 	    syncStockStages: boolean;
 	    syncScreenpack: boolean;
 	    syncFonts: boolean;
+	    syncSound: boolean;
 	    syncRuntime: boolean;
 	    resetConfig: boolean;
 	
@@ -213,6 +214,7 @@ export namespace project {
 	        this.syncStockStages = source["syncStockStages"];
 	        this.syncScreenpack = source["syncScreenpack"];
 	        this.syncFonts = source["syncFonts"];
+	        this.syncSound = source["syncSound"];
 	        this.syncRuntime = source["syncRuntime"];
 	        this.resetConfig = source["resetConfig"];
 	    }

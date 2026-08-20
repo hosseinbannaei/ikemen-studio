@@ -69,6 +69,8 @@ func VerifyAndRepairProjectWithMode(engineDir, projectDir string, updateCoreSyst
 	coreSystemFiles := map[string]bool{
 		"data/common1.cns.zss": true,
 		"data/dgl.zss":         true,
+		"data/training.zss":    true,
+		"data/logo.zss":        true,
 		"data/common.cns":      true,
 		"data/fightfx.air":     true,
 		"data/fightfx.sff":     true,
