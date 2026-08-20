@@ -170,11 +170,14 @@ func parseSFFv1(data []byte) (image.Image, error) {
 					sharedPal = pal
 				}
 
-				// Priority 1: Large portrait (9000, 1) or small (9000, 0)
-				if group == 9000 && (imageNo == 1 || imageNo == 0) {
+				// Large portrait (9000, 1) is highest priority
+				if group == 9000 && imageNo == 1 {
 					return decodedImg, nil
 				}
-				if fallbackImg == nil {
+				// (9000, 0) or other sprite as fallback
+				if group == 9000 && imageNo == 0 {
+					fallbackImg = decodedImg
+				} else if fallbackImg == nil {
 					fallbackImg = decodedImg
 				}
 			}
@@ -224,10 +227,12 @@ func parseSFFv2(data []byte) (image.Image, error) {
 				if format >= 10 && format <= 12 || bytes.HasPrefix(raw, []byte("\x89PNG")) {
 					img, err := png.Decode(bytes.NewReader(raw))
 					if err == nil {
-						if group == 9000 && (item == 1 || item == 0) {
+						if group == 9000 && item == 1 {
 							return img, nil
 						}
-						if fallbackImg == nil {
+						if group == 9000 && item == 0 {
+							fallbackImg = img
+						} else if fallbackImg == nil {
 							fallbackImg = img
 						}
 					}

@@ -127,7 +127,14 @@
     while (roster.slots.length > 0 && roster.slots[roster.slots.length - 1].type === 'empty') {
       roster.slots.pop();
     }
+    gridRows = Math.max(1, Math.ceil(roster.slots.length / gridColumns));
     roster.slots = [...roster.slots];
+  }
+
+  function matchMotifGrid() {
+    if (!roster) return;
+    gridColumns = Math.max(1, roster.grid?.columns || 8);
+    gridRows = Math.max(1, roster.grid?.rows || 10);
   }
 
   function selectOrActivateSlot(idx: number) {
@@ -527,11 +534,11 @@
                 on:dragstart={(e) => handleLibraryDragStart(e, 'char', char.name)}
               >
                 <div class="flex items-center gap-2.5 min-w-0">
-                  <div class="w-8 h-8 rounded-lg bg-dark-900 border border-dark-600/80 overflow-hidden flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-indigo-950/40 to-dark-900">
+                  <div class="w-10 h-10 rounded-xl bg-dark-900 border border-dark-600/80 overflow-hidden flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-indigo-950/40 to-dark-900 shadow-inner relative">
                     {#if char.portrait_base64}
-                      <img src={char.portrait_base64} alt={char.name} class="w-full h-full object-contain" />
+                      <img src={char.portrait_base64} alt={char.name} class="w-full h-full object-cover object-top" />
                     {:else}
-                      <Users class="w-4 h-4 text-slate-500" />
+                      <Users class="w-5 h-5 text-indigo-400" />
                     {/if}
                   </div>
                   <div class="min-w-0">
@@ -569,11 +576,11 @@
                 on:dragstart={(e) => handleLibraryDragStart(e, 'vault', charName, asset)}
               >
                 <div class="flex items-center gap-2.5 min-w-0">
-                  <div class="w-8 h-8 rounded-lg bg-dark-900 border border-dark-600/80 overflow-hidden flex items-center justify-center flex-shrink-0">
+                  <div class="w-10 h-10 rounded-xl bg-dark-900 border border-dark-600/80 overflow-hidden flex items-center justify-center flex-shrink-0 relative shadow-inner">
                     {#if asset.preview_base64}
-                      <img src={asset.preview_base64} alt={charName} class="w-full h-full object-contain" />
+                      <img src={asset.preview_base64} alt={charName} class="w-full h-full object-cover object-top" />
                     {:else}
-                      <Sparkles class="w-4 h-4 text-brand-400" />
+                      <Sparkles class="w-5 h-5 text-brand-400" />
                     {/if}
                   </div>
                   <div class="min-w-0">
@@ -719,10 +726,19 @@
             <button
               type="button"
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-dark-800 hover:bg-dark-700 border border-dark-600/60 text-xs font-semibold text-slate-300 transition"
-              title="Remove trailing empty slots"
+              title="Remove trailing empty slots and shrink grid rows"
               on:click={trimTrailingEmptySlots}
             >
               <span>Trim Empty</span>
+            </button>
+
+            <button
+              type="button"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-dark-800 hover:bg-dark-700 border border-dark-600/60 text-xs font-semibold text-slate-400 hover:text-slate-200 transition"
+              title="Reset rows/columns to engine motif configuration (system.def)"
+              on:click={matchMotifGrid}
+            >
+              <span>Reset Motif</span>
             </button>
 
             <button
@@ -739,7 +755,7 @@
         <!-- The Interactive Grid Matrix -->
         <div class="flex-1 overflow-auto flex justify-center items-start">
           <div
-            class="grid gap-2 p-2 bg-dark-950/60 border border-dark-700/60 rounded-2xl shadow-inner {
+            class="grid gap-2.5 p-3 bg-dark-950/80 border border-dark-700/70 rounded-2xl shadow-2xl {
               density === 'arcade' ? 'max-w-4xl' : density === 'medium' ? 'max-w-5xl' : 'w-full'
             }"
             style="grid-template-columns: repeat({gridColumns}, minmax(0, 1fr));"
@@ -750,13 +766,13 @@
               <!-- svelte-ignore a11y_click_to_play -->
               <div
                 class="group relative rounded-xl border transition-all duration-150 cursor-pointer flex flex-col justify-between overflow-hidden select-none {
-                  density === 'arcade' ? 'p-1.5 aspect-[4/3] min-h-[58px]' : density === 'medium' ? 'p-2 aspect-square min-h-[85px]' : 'p-3 aspect-square min-h-[115px]'
+                  density === 'arcade' ? 'aspect-[4/3] min-h-[64px]' : density === 'medium' ? 'aspect-square min-h-[88px]' : 'aspect-square min-h-[120px]'
                 } {
                   selectedSlotIndex === idx
-                    ? 'border-indigo-500 bg-indigo-950/40 ring-2 ring-indigo-500/50 shadow-lg shadow-indigo-950/50'
+                    ? 'border-indigo-500 ring-2 ring-indigo-500/60 shadow-lg shadow-indigo-950/60'
                     : isVirtual || slot.type === 'empty'
                     ? 'border-dark-700/60 bg-dark-900/40 hover:bg-dark-800/80 hover:border-dark-500'
-                    : 'border-dark-600/70 bg-dark-800/90 hover:bg-dark-800 hover:border-slate-500/60'
+                    : 'border-dark-600/80 bg-dark-850 hover:border-slate-400/80 shadow-md'
                 } {
                   slot.type === 'disabled' ? 'opacity-50 grayscale' : ''
                 }"
@@ -768,63 +784,78 @@
                 on:dragover={handleSlotDragOver}
                 on:drop={(e) => handleSlotDrop(e, idx)}
               >
-                <!-- Slot Top Index & Type Badge -->
-                <div class="flex items-center justify-between w-full text-[9px] text-slate-500 pointer-events-none">
-                  <span class="font-mono {selectedSlotIndex === idx ? 'text-indigo-400 font-bold' : ''}">#{idx + 1}</span>
-
-                  {#if slot.type === 'randomselect'}
-                    <span class="px-1 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold text-[8px]">
-                      ?
-                    </span>
-                  {:else if slot.type === 'disabled'}
-                    <span class="px-1 py-0.2 rounded bg-rose-500/20 text-rose-300 font-bold text-[8px]">
-                      OFF
-                    </span>
-                  {:else if slot.order && slot.order > 0}
-                    <span class="px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold text-[8px] flex items-center gap-0.5">
-                      <Crown class="w-2 h-2" />
-                      <span>{slot.order}</span>
-                    </span>
-                  {/if}
-                </div>
-
-                <!-- Slot Center: Thumbnail / Icon -->
-                <div class="flex-1 flex items-center justify-center overflow-hidden my-0.5 pointer-events-none">
-                  {#if slot.type === 'character' || slot.type === 'disabled'}
-                    {#if slot.portrait_base64}
-                      <img
-                        src={slot.portrait_base64}
-                        alt={slot.character}
-                        class="max-h-full max-w-full object-contain rounded drop-shadow group-hover:scale-105 transition duration-150"
-                      />
-                    {:else}
-                      <div class="w-7 h-7 rounded-lg bg-indigo-950/40 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                        <Users class="w-3.5 h-3.5" />
-                      </div>
-                    {/if}
-                  {:else if slot.type === 'randomselect'}
-                    <div class="w-7 h-7 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300 font-bold">
-                      ?
-                    </div>
+                {#if slot.type === 'character' || slot.type === 'disabled'}
+                  <!-- Full Edge-to-Edge Fighter Portrait -->
+                  {#if slot.portrait_base64}
+                    <img
+                      src={slot.portrait_base64}
+                      alt={slot.character}
+                      class="absolute inset-0 w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-200 pointer-events-none"
+                    />
                   {:else}
-                    <div class="w-6 h-6 rounded border border-dashed border-dark-700 flex items-center justify-center text-slate-600 group-hover:text-slate-400 group-hover:border-slate-500 transition">
-                      <Plus class="w-3 h-3" />
+                    <div class="absolute inset-0 bg-gradient-to-br from-indigo-950/70 to-dark-900 flex items-center justify-center pointer-events-none">
+                      <Users class="w-8 h-8 text-indigo-400/40" />
                     </div>
                   {/if}
-                </div>
 
-                <!-- Slot Bottom: Character Name -->
-                <div class="w-full text-center pointer-events-none">
-                  {#if slot.type === 'character' || slot.type === 'disabled'}
-                    <div class="text-[10px] font-bold text-slate-200 truncate leading-tight">
+                  <!-- Bottom Dark Gradient Overlay for Crisp Text Readability -->
+                  <div class="absolute inset-0 bg-gradient-to-t from-dark-950/95 via-dark-950/30 to-transparent pointer-events-none"></div>
+
+                  <!-- Top Index & Status Badges -->
+                  <div class="relative z-10 flex items-center justify-between p-1.5 w-full pointer-events-none">
+                    <span class="font-mono text-[9px] px-1 py-0.2 rounded bg-black/70 backdrop-blur-xs {selectedSlotIndex === idx ? 'text-indigo-400 font-bold border border-indigo-500/40' : 'text-slate-300'}">
+                      #{idx + 1}
+                    </span>
+
+                    {#if slot.type === 'disabled'}
+                      <span class="px-1 py-0.2 rounded bg-rose-600/90 text-white font-bold text-[8px] shadow">
+                        OFF
+                      </span>
+                    {:else if slot.order && slot.order > 0}
+                      <span class="px-1.5 py-0.2 rounded bg-amber-500 text-black font-extrabold text-[8px] flex items-center gap-0.5 shadow">
+                        <Crown class="w-2.5 h-2.5 fill-black" />
+                        <span>{slot.order}</span>
+                      </span>
+                    {/if}
+                  </div>
+
+                  <!-- Bottom Fighter Name & Stage Subtitle -->
+                  <div class="relative z-10 p-1.5 text-center pointer-events-none">
+                    <div class="text-[10px] font-bold text-white leading-tight drop-shadow truncate">
                       {slot.display_name || slot.character}
                     </div>
-                  {:else if slot.type === 'randomselect'}
-                    <div class="text-[9px] font-bold text-purple-300 truncate">Random</div>
-                  {:else}
-                    <div class="text-[8px] text-slate-600 truncate">Empty</div>
-                  {/if}
-                </div>
+                    {#if slot.home_stage && density !== 'arcade'}
+                      <div class="text-[8px] text-emerald-400 truncate flex items-center justify-center gap-0.5">
+                        <Mountain class="w-2 h-2" />
+                        <span>{slot.home_stage.replace(/^stages\//i, '').replace(/\.def$/i, '')}</span>
+                      </div>
+                    {/if}
+                  </div>
+
+                {:else if slot.type === 'randomselect'}
+                  <!-- Random Select Tile -->
+                  <div class="absolute inset-0 bg-gradient-to-br from-purple-950/80 via-indigo-950/60 to-dark-900 flex flex-col items-center justify-center pointer-events-none">
+                    <div class="text-xl font-black text-purple-400 drop-shadow animate-pulse">?</div>
+                  </div>
+                  <div class="relative z-10 flex items-center justify-between p-1.5 w-full pointer-events-none">
+                    <span class="font-mono text-[9px] px-1 py-0.2 rounded bg-black/60 text-purple-300">#{idx + 1}</span>
+                    <span class="px-1 py-0.2 rounded bg-purple-500/30 text-purple-300 font-bold text-[8px]">RANDOM</span>
+                  </div>
+                  <div class="relative z-10 p-1.5 text-center text-[10px] font-bold text-purple-300 pointer-events-none">
+                    Random Select
+                  </div>
+
+                {:else}
+                  <!-- Empty Slot Tile -->
+                  <div class="relative z-10 flex items-center justify-between p-1.5 w-full pointer-events-none">
+                    <span class="font-mono text-[9px] text-slate-600">#{idx + 1}</span>
+                  </div>
+                  <div class="flex-1 flex flex-col items-center justify-center pointer-events-none">
+                    <Plus class="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition" />
+                    <span class="text-[8px] text-slate-600 group-hover:text-slate-400 mt-0.5 font-medium">Empty Slot</span>
+                  </div>
+                  <div class="p-1"></div>
+                {/if}
               </div>
             {/each}
           </div>

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { projectStore } from '../stores/projectStore';
   import { engineStore } from '../stores/engineStore';
+  import { toastStore } from '../stores/toastStore';
   import type { VerificationReport } from '../types';
   import VerifyOptionsModal from './VerifyOptionsModal.svelte';
   import VerifyReportModal from './VerifyReportModal.svelte';
@@ -35,6 +36,14 @@
     Package,
     Plus,
     Grid,
+    Copy,
+    Check,
+    ArrowRight,
+    ShieldCheck,
+    RefreshCw,
+    Cpu,
+    Layers,
+    FolderOpen,
   } from 'lucide-svelte';
 
   export let onBackToProjects: () => void;
@@ -53,21 +62,98 @@
   let pendingEngineVersion = '';
   let selectedEngineVersion = '';
 
+  // Stats & Log Preview
+  let fighterCount = 0;
+  let stageCount = 0;
+  let recentLogs = '';
+  let isLoadingStats = false;
+  let isRefreshingLogs = false;
+  let copiedPath = false;
+  let activeLaunchMode: 'normal' | 'training' | 'debug' = 'normal';
+
   $: if ($projectStore.current?.engine?.version && !showEngineConfirmModal) {
     selectedEngineVersion = $projectStore.current.engine.version;
   }
 
   let verificationReport: VerificationReport | null = null;
   let isVerifying = false;
-  let showPlayDropdown = false;
 
   const folderShortcuts = [
-    { label: 'Characters', subpath: 'chars', icon: Users, desc: 'Fighter packages and .def files', color: 'from-blue-500/20 to-cyan-500/20 text-cyan-400 border-cyan-500/30', category: 'fighters' },
-    { label: 'Stages', subpath: 'stages', icon: Mountain, desc: 'Background arenas and music defs', color: 'from-emerald-500/20 to-teal-500/20 text-emerald-400 border-emerald-500/30', category: 'stages' },
-    { label: 'System Data', subpath: 'data', icon: FileCode, desc: 'select.def, system.def, fonts', color: 'from-amber-500/20 to-orange-500/20 text-amber-400 border-amber-500/30' },
-    { label: 'Fonts', subpath: 'font', icon: Type, desc: 'Bitmap and TrueType font assets', color: 'from-purple-500/20 to-pink-500/20 text-purple-400 border-purple-500/30' },
-    { label: 'Sound & Music', subpath: 'sound', icon: Music, desc: 'BGM tracks, hits, and announcer voices', color: 'from-rose-500/20 to-red-500/20 text-rose-400 border-rose-500/30' },
+    {
+      label: 'Characters',
+      subpath: 'chars',
+      icon: Users,
+      desc: 'Fighter packages, sprites and .def files',
+      color: 'from-blue-500/20 to-cyan-500/20 text-cyan-400 border-cyan-500/30',
+      category: 'fighters' as const,
+      canAddVault: true,
+    },
+    {
+      label: 'Stages',
+      subpath: 'stages',
+      icon: Mountain,
+      desc: 'Background arenas, zoom defs & BGM',
+      color: 'from-emerald-500/20 to-teal-500/20 text-emerald-400 border-emerald-500/30',
+      category: 'stages' as const,
+      canAddVault: true,
+    },
+    {
+      label: 'System Data',
+      subpath: 'data',
+      icon: FileCode,
+      desc: 'select.def, system.def, motif & fonts',
+      color: 'from-amber-500/20 to-orange-500/20 text-amber-400 border-amber-500/30',
+      canAddVault: false,
+    },
+    {
+      label: 'Fonts',
+      subpath: 'font',
+      icon: Type,
+      desc: 'Bitmap (.fnt) and TrueType (.ttf) fonts',
+      color: 'from-purple-500/20 to-pink-500/20 text-purple-400 border-purple-500/30',
+      canAddVault: false,
+    },
+    {
+      label: 'Sound & Music',
+      subpath: 'sound',
+      icon: Music,
+      desc: 'BGM soundtracks, hits, announcer audio',
+      color: 'from-rose-500/20 to-red-500/20 text-rose-400 border-rose-500/30',
+      canAddVault: false,
+    },
   ];
+
+  onMount(async () => {
+    await loadProjectStats();
+    await fetchRecentLogs();
+  });
+
+  async function loadProjectStats() {
+    if (!$projectStore.current?.path) return;
+    isLoadingStats = true;
+    try {
+      const data = await projectStore.getFightersAndStages($projectStore.current.path);
+      fighterCount = data?.characters?.length || 0;
+      stageCount = data?.stages?.length || 0;
+    } catch {
+      fighterCount = 0;
+      stageCount = 0;
+    } finally {
+      isLoadingStats = false;
+    }
+  }
+
+  async function fetchRecentLogs() {
+    if (!$projectStore.current?.path) return;
+    isRefreshingLogs = true;
+    try {
+      recentLogs = await projectStore.getLogs($projectStore.current.path);
+    } catch {
+      recentLogs = '';
+    } finally {
+      isRefreshingLogs = false;
+    }
+  }
 
   function handleOpenVaultFor(cat: 'fighters' | 'stages') {
     vaultTargetCategory = cat;
@@ -84,7 +170,7 @@
   }
 
   async function handleLaunchMode(mode: 'normal' | 'training' | 'debug') {
-    showPlayDropdown = false;
+    activeLaunchMode = mode;
     if (mode === 'normal') {
       await projectStore.launch();
     } else if (mode === 'training') {
@@ -121,6 +207,7 @@
     showEngineConfirmModal = false;
     if (pendingEngineVersion) {
       await projectStore.switchEngine(pendingEngineVersion);
+      await loadProjectStats();
     }
   }
 
@@ -128,6 +215,19 @@
     showRollbackModal = false;
     if (selectedBackupId) {
       await projectStore.rollbackEngine(selectedBackupId);
+      await loadProjectStats();
+    }
+  }
+
+  async function copyPathToClipboard() {
+    if (!$projectStore.current?.path) return;
+    try {
+      await navigator.clipboard.writeText($projectStore.current.path);
+      copiedPath = true;
+      toastStore.info('Path Copied', 'Project directory copied to clipboard');
+      setTimeout(() => (copiedPath = false), 2000);
+    } catch {
+      // Fallback
     }
   }
 
@@ -147,36 +247,39 @@
   $: isBusy = $projectStore.gameState !== 'idle';
 </script>
 
-<svelte:window on:click={() => (showPlayDropdown = false)} />
-
 {#if $projectStore.current}
-  <div class="max-w-6xl mx-auto p-8 space-y-6">
-    <!-- Top Hero Banner / Project Details -->
-    <div class="p-6 rounded-2xl bg-dark-800 border {$projectStore.gameState === 'running' ? 'border-emerald-500/50 shadow-emerald-950/30' : 'border-dark-600/70'} shadow-lg relative overflow-visible z-20 transition-all duration-300">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-        <div class="space-y-2">
+  <div class="max-w-7xl mx-auto p-6 md:p-8 space-y-6 pb-12">
+    <!-- Header: Project Overview & Core Utilities -->
+    <header class="p-6 rounded-2xl bg-dark-800 border border-dark-600/70 shadow-lg relative overflow-hidden transition-all duration-300">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+        <!-- Left: Project Identity & Metadata -->
+        <div class="space-y-3 min-w-0">
           <div class="flex items-center gap-3 flex-wrap">
-            <h1 class="text-2xl font-black text-slate-100">{$projectStore.current.name}</h1>
-            
-            <!-- Engine Version Selector with Switcher -->
-            <div class="flex items-center gap-1.5">
+            <h1 class="text-2xl md:text-3xl font-black text-slate-100 tracking-tight truncate">
+              {$projectStore.current.name}
+            </h1>
+
+            <!-- Engine Version Selector Pill -->
+            <div class="flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/30 rounded-full px-2.5 py-1">
+              <Cpu class="w-3.5 h-3.5 text-purple-400" />
               <select
                 bind:value={selectedEngineVersion}
                 on:change={handleEngineSelect}
                 disabled={isBusy}
-                class="text-xs font-mono px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30 font-semibold focus:outline-none focus:border-purple-400 cursor-pointer disabled:opacity-50"
-                title="Change project engine version (with automated backup)"
+                class="text-xs font-mono bg-transparent text-purple-200 font-semibold focus:outline-none cursor-pointer disabled:opacity-50"
+                title="Change project engine version (with automated safety backup)"
               >
                 {#each $engineStore.installed as engine}
-                  <option value={engine.version}>{engine.version} ({engine.channel})</option>
+                  <option value={engine.version} class="bg-dark-800 text-slate-100">
+                    {engine.version} ({engine.channel})
+                  </option>
                 {/each}
               </select>
 
-              <!-- Rollback Button if backups exist -->
               {#if $projectStore.backups && $projectStore.backups.length > 0}
                 <button
                   type="button"
-                  class="p-1 rounded-full bg-dark-700 hover:bg-dark-600 text-purple-400 border border-dark-600/60 transition"
+                  class="ml-1 p-0.5 rounded-full hover:bg-purple-500/20 text-purple-400 transition"
                   title="Rollback to previous engine backup ({$projectStore.backups[0].version})"
                   on:click={() => {
                     selectedBackupId = $projectStore.backups[0].id;
@@ -188,311 +291,499 @@
               {/if}
             </div>
 
+            <!-- Status Indicator -->
             {#if $projectStore.gameState === 'running'}
-              <span class="flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold">
+              <span class="flex items-center gap-1.5 text-xs px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold">
                 <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                Game Active
+                Engine Session Active
               </span>
             {:else if $projectStore.gameState === 'starting'}
-              <span class="flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold">
+              <span class="flex items-center gap-1.5 text-xs px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold">
                 <Loader2 class="w-3 h-3 animate-spin" />
                 Spawning Process...
               </span>
             {/if}
           </div>
 
+          <!-- Metadata row -->
           <div class="flex items-center gap-4 text-xs text-slate-400 flex-wrap">
             {#if $projectStore.current.author}
               <div class="flex items-center gap-1.5">
                 <User class="w-3.5 h-3.5 text-slate-500" />
-                <span>Author: <strong class="text-slate-300">{$projectStore.current.author}</strong></span>
+                <span>Author: <strong class="text-slate-200">{$projectStore.current.author}</strong></span>
               </div>
             {/if}
             <div class="flex items-center gap-1.5">
               <Calendar class="w-3.5 h-3.5 text-slate-500" />
               <span>Created: {formatDate($projectStore.current.created_at)}</span>
             </div>
-            <div class="flex items-center gap-1.5">
-              <HardDrive class="w-3.5 h-3.5 text-slate-500" />
-              <span class="font-mono truncate max-w-sm">{$projectStore.current.path}</span>
-            </div>
+            <button
+              type="button"
+              class="flex items-center gap-1.5 text-slate-400 hover:text-slate-200 font-mono text-xs transition group"
+              on:click={copyPathToClipboard}
+              title="Click to copy path"
+            >
+              <HardDrive class="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400 transition" />
+              <span class="truncate max-w-xs md:max-w-md">{$projectStore.current.path}</span>
+              {#if copiedPath}
+                <Check class="w-3 h-3 text-emerald-400" />
+              {:else}
+                <Copy class="w-3 h-3 text-slate-600 group-hover:text-slate-400" />
+              {/if}
+            </button>
           </div>
         </div>
 
-        <!-- Action Controls -->
-        <div class="flex items-center gap-2 flex-wrap">
-          <!-- Roster Editor -->
+        <!-- Right: Utility Quick Actions -->
+        <div class="flex items-center gap-2 flex-wrap self-start lg:self-center">
           <button
             type="button"
-            class="px-3 py-2.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
-            on:click={onOpenRosterEditor}
-            title="Open Visual Character Select & Roster Editor"
-          >
-            <Grid class="w-3.5 h-3.5 text-indigo-400" />
-            <span>Roster Editor</span>
-          </button>
-
-          <!-- Add from Vault -->
-          <button
-            type="button"
-            class="px-3 py-2.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 border border-brand-500/40 text-brand-300 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
-            on:click={() => handleOpenVaultFor('fighters')}
-            title="Link fighters and stages from your Vault library"
-          >
-            <Sparkles class="w-3.5 h-3.5 text-brand-400" />
-            <span>+ From Vault</span>
-          </button>
-
-          <!-- Game Settings (config.ini) -->
-          <button
-            type="button"
-            class="px-3 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600/70 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
-            on:click={() => (showGameConfigModal = true)}
-            title="Edit Game Settings & save/config.ini"
-          >
-            <Sliders class="w-3.5 h-3.5 text-cyan-400" />
-            <span>Config</span>
-          </button>
-
-          <!-- Explorer -->
-          <button
-            type="button"
-            class="px-3 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600/70 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+            class="px-3 py-2 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600/70 text-slate-200 text-xs font-semibold flex items-center gap-2 transition shadow-sm"
             on:click={() => projectStore.openFolder()}
-            title="Open project directory in File Explorer"
+            title="Open project folder in File Explorer"
           >
-            <Folder class="w-3.5 h-3.5 text-indigo-400" />
+            <FolderOpen class="w-4 h-4 text-indigo-400" />
             <span>Explorer</span>
           </button>
 
-          <!-- Logs -->
           <button
             type="button"
-            class="px-3 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600/70 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+            class="px-3 py-2 rounded-xl bg-dark-700 hover:bg-dark-600 border border-dark-600/70 text-slate-200 text-xs font-semibold flex items-center gap-2 transition shadow-sm"
             on:click={() => projectStore.openLogs()}
-            title="Open project logs folder"
+            title="Open project logs directory"
           >
-            <FileText class="w-3.5 h-3.5 text-amber-400" />
+            <FileText class="w-4 h-4 text-amber-400" />
             <span>Logs</span>
           </button>
 
-          <!-- Repair Hub -->
           <button
             type="button"
-            disabled={isVerifying || isBusy}
-            class="px-3 py-2.5 rounded-xl bg-dark-700 hover:bg-dark-600 disabled:opacity-50 border border-dark-600/70 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
-            on:click={handleVerifyClick}
-            title="Open Maintenance & Repair Hub"
+            disabled={isBusy}
+            class="px-3 py-2 rounded-xl bg-dark-700 hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30 border border-dark-600/70 text-slate-400 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm disabled:opacity-40"
+            on:click={() => {
+              projectStore.close();
+              onBackToProjects();
+            }}
+            title="Close this project and return to hub"
           >
-            {#if isVerifying}
-              <Loader2 class="w-3.5 h-3.5 animate-spin text-indigo-400" />
-              <span>Checking...</span>
-            {:else}
-              <Wrench class="w-3.5 h-3.5 text-purple-400" />
-              <span>Repair Hub</span>
-            {/if}
+            <XCircle class="w-4 h-4" />
+            <span>Close</span>
           </button>
+        </div>
+      </div>
+    </header>
 
-          <!-- Split Play / Launch Button -->
-          {#if $projectStore.gameState === 'starting'}
-            <button
-              type="button"
-              disabled
-              class="px-5 py-2.5 rounded-xl font-bold text-sm bg-dark-700 border border-dark-600 text-slate-400 cursor-not-allowed flex items-center gap-2 transition"
-            >
-              <Loader2 class="w-4 h-4 animate-spin text-amber-400" />
-              <span>Starting...</span>
-            </button>
-          {:else if $projectStore.gameState === 'stopping'}
-            <button
-              type="button"
-              disabled
-              class="px-5 py-2.5 rounded-xl font-bold text-sm bg-dark-700 border border-dark-600 text-slate-400 cursor-not-allowed flex items-center gap-2 transition"
-            >
-              <Loader2 class="w-4 h-4 animate-spin text-rose-400" />
-              <span>Stopping...</span>
-            </button>
-          {:else if $projectStore.gameState === 'running'}
-            <button
-              type="button"
-              disabled={!$projectStore.canStop}
-              class="px-5 py-2.5 rounded-xl font-bold text-sm shadow-md flex items-center gap-2 transition {
-                $projectStore.canStop
-                  ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950/50'
-                  : 'bg-rose-900/60 text-rose-300 border border-rose-800/50 cursor-wait'
-              }"
-              on:click={() => projectStore.stop()}
-            >
-              <Square class="w-4 h-4 fill-current" />
-              <span>{$projectStore.canStop ? 'Stop Game' : 'Game Active...'}</span>
-            </button>
-          {:else}
-            <!-- Play Split Group -->
-            <div class="relative flex items-center" on:click|stopPropagation>
+    <!-- Hero Launch & Live KPI Control Deck -->
+    <div class="p-6 rounded-2xl bg-gradient-to-br from-dark-800 to-dark-850 border border-dark-600/70 shadow-lg space-y-6">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <!-- Launch Controls -->
+        <div class="space-y-3">
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Launch & Runtime Mode</div>
+          <div class="flex flex-wrap items-center gap-2">
+            {#if $projectStore.gameState === 'starting'}
               <button
                 type="button"
-                class="px-5 py-2.5 rounded-l-xl font-bold text-sm shadow-md bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/50 flex items-center gap-2 transition"
+                disabled
+                class="px-6 py-3 rounded-xl font-bold text-sm bg-dark-700 border border-dark-600 text-slate-400 cursor-not-allowed flex items-center gap-2.5 transition shadow"
+              >
+                <Loader2 class="w-4 h-4 animate-spin text-amber-400" />
+                <span>Starting Ikemen GO...</span>
+              </button>
+            {:else if $projectStore.gameState === 'stopping'}
+              <button
+                type="button"
+                disabled
+                class="px-6 py-3 rounded-xl font-bold text-sm bg-dark-700 border border-dark-600 text-slate-400 cursor-not-allowed flex items-center gap-2.5 transition shadow"
+              >
+                <Loader2 class="w-4 h-4 animate-spin text-rose-400" />
+                <span>Stopping Engine...</span>
+              </button>
+            {:else if $projectStore.gameState === 'running'}
+              <button
+                type="button"
+                disabled={!$projectStore.canStop}
+                class="px-6 py-3 rounded-xl font-bold text-sm shadow-lg flex items-center gap-2.5 transition {
+                  $projectStore.canStop
+                    ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950/50 cursor-pointer'
+                    : 'bg-rose-900/60 text-rose-300 border border-rose-800/50 cursor-wait'
+                }"
+                on:click={() => projectStore.stop()}
+              >
+                <Square class="w-4 h-4 fill-current" />
+                <span>{$projectStore.canStop ? 'Stop Game Session' : 'Game Running...'}</span>
+              </button>
+            {:else}
+              <!-- Primary Launch Button -->
+              <button
+                type="button"
+                class="px-6 py-3 rounded-xl font-bold text-sm shadow-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/60 flex items-center gap-2.5 transition hover:scale-[1.02]"
                 on:click={() => handleLaunchMode('normal')}
               >
                 <Play class="w-4 h-4 fill-current" />
-                <span>Launch Game</span>
+                <span>Launch Arcade Game</span>
               </button>
 
-              <button
-                type="button"
-                class="px-2.5 py-2.5 rounded-r-xl bg-emerald-700 hover:bg-emerald-600 border-l border-emerald-500/40 text-white transition"
-                on:click={() => (showPlayDropdown = !showPlayDropdown)}
-                title="Launch Options & Presets"
-              >
-                <ChevronDown class="w-4 h-4" />
-              </button>
+              <!-- Quick Launch Presets -->
+              <div class="flex items-center gap-1.5 bg-dark-900/80 p-1 rounded-xl border border-dark-600/60">
+                <button
+                  type="button"
+                  class="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-dark-750 transition flex items-center gap-1.5"
+                  on:click={() => handleLaunchMode('training')}
+                  title="Direct 1v1 Sparring / Training Mode (-p1 ... -p2 ... -time -1)"
+                >
+                  <Sparkles class="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Sparring</span>
+                </button>
 
-              <!-- Launch Dropdown Menu -->
-              {#if showPlayDropdown}
-                <div class="absolute right-0 top-full mt-2 w-64 rounded-2xl bg-dark-800 border border-dark-600/80 shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
-                  <button
-                    type="button"
-                    class="w-full px-3 py-2.5 rounded-xl text-left hover:bg-dark-700/80 text-xs font-semibold text-slate-200 flex items-center gap-2.5 transition"
-                    on:click={() => handleLaunchMode('normal')}
-                  >
-                    <Play class="w-3.5 h-3.5 text-emerald-400 fill-current" />
-                    <div>
-                      <div>Normal Game</div>
-                      <div class="text-[10px] text-slate-500">Standard arcade launcher</div>
-                    </div>
-                  </button>
+                <button
+                  type="button"
+                  class="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-dark-750 transition flex items-center gap-1.5"
+                  on:click={() => handleLaunchMode('debug')}
+                  title="Developer Debug Mode (-debug -maxpowermode)"
+                >
+                  <Terminal class="w-3.5 h-3.5 text-amber-400" />
+                  <span>Debug</span>
+                </button>
 
-                  <button
-                    type="button"
-                    class="w-full px-3 py-2.5 rounded-xl text-left hover:bg-dark-700/80 text-xs font-semibold text-slate-200 flex items-center gap-2.5 transition"
-                    on:click={() => handleLaunchMode('training')}
-                  >
-                    <Sparkles class="w-3.5 h-3.5 text-indigo-400" />
-                    <div>
-                      <div>Direct Training / Sparring</div>
-                      <div class="text-[10px] text-slate-500 font-mono">-p1 ... -p2 ... -time -1</div>
-                    </div>
-                  </button>
+                <button
+                  type="button"
+                  class="px-3 py-2 rounded-lg text-xs font-semibold text-purple-300 hover:text-purple-200 hover:bg-purple-500/10 transition flex items-center gap-1.5"
+                  on:click={() => (showCustomLaunchModal = true)}
+                  title="Custom Launch Flags and Argument History"
+                >
+                  <Sliders class="w-3.5 h-3.5 text-purple-400" />
+                  <span>Custom Flags...</span>
+                </button>
+              </div>
+            {/if}
+          </div>
+        </div>
 
-                  <button
-                    type="button"
-                    class="w-full px-3 py-2.5 rounded-xl text-left hover:bg-dark-700/80 text-xs font-semibold text-slate-200 flex items-center gap-2.5 transition"
-                    on:click={() => handleLaunchMode('debug')}
-                  >
-                    <Terminal class="w-3.5 h-3.5 text-amber-400" />
-                    <div>
-                      <div>Developer / Debug Mode</div>
-                      <div class="text-[10px] text-slate-500 font-mono">-debug -maxpowermode</div>
-                    </div>
-                  </button>
-
-                  <div class="h-px bg-dark-600/50 my-1"></div>
-
-                  <button
-                    type="button"
-                    class="w-full px-3 py-2.5 rounded-xl text-left hover:bg-dark-700/80 text-xs font-semibold text-purple-300 flex items-center gap-2.5 transition"
-                    on:click={() => {
-                      showPlayDropdown = false;
-                      showCustomLaunchModal = true;
-                    }}
-                  >
-                    <Sliders class="w-3.5 h-3.5 text-purple-400" />
-                    <div>
-                      <div>Custom Launch Options...</div>
-                      <div class="text-[10px] text-slate-500">Flags & argument history</div>
-                    </div>
-                  </button>
-                </div>
-              {/if}
+        <!-- Project KPI Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 lg:w-auto">
+          <!-- Fighters Stat -->
+          <div class="p-3.5 rounded-xl bg-dark-900/70 border border-dark-600/50 flex flex-col justify-between min-w-[110px]">
+            <div class="flex items-center justify-between text-slate-400 mb-1">
+              <span class="text-[11px] font-semibold">Fighters</span>
+              <Users class="w-3.5 h-3.5 text-cyan-400" />
             </div>
+            <div class="text-xl font-bold text-slate-100">
+              {isLoadingStats ? '...' : fighterCount}
+            </div>
+            <div class="text-[10px] text-slate-500 font-mono mt-0.5">chars/</div>
+          </div>
+
+          <!-- Stages Stat -->
+          <div class="p-3.5 rounded-xl bg-dark-900/70 border border-dark-600/50 flex flex-col justify-between min-w-[110px]">
+            <div class="flex items-center justify-between text-slate-400 mb-1">
+              <span class="text-[11px] font-semibold">Stages</span>
+              <Mountain class="w-3.5 h-3.5 text-emerald-400" />
+            </div>
+            <div class="text-xl font-bold text-slate-100">
+              {isLoadingStats ? '...' : stageCount}
+            </div>
+            <div class="text-[10px] text-slate-500 font-mono mt-0.5">stages/</div>
+          </div>
+
+          <!-- Engine Version -->
+          <div class="p-3.5 rounded-xl bg-dark-900/70 border border-dark-600/50 flex flex-col justify-between min-w-[110px]">
+            <div class="flex items-center justify-between text-slate-400 mb-1">
+              <span class="text-[11px] font-semibold">Engine</span>
+              <Cpu class="w-3.5 h-3.5 text-purple-400" />
+            </div>
+            <div class="text-xs font-bold text-purple-300 truncate" title={$projectStore.current.engine.version}>
+              {$projectStore.current.engine.version}
+            </div>
+            <div class="text-[10px] text-slate-500 font-mono mt-0.5">{$projectStore.current.engine.channel}</div>
+          </div>
+
+          <!-- Backups Stat -->
+          <div class="p-3.5 rounded-xl bg-dark-900/70 border border-dark-600/50 flex flex-col justify-between min-w-[110px]">
+            <div class="flex items-center justify-between text-slate-400 mb-1">
+              <span class="text-[11px] font-semibold">Backups</span>
+              <RotateCcw class="w-3.5 h-3.5 text-amber-400" />
+            </div>
+            <div class="text-xl font-bold text-slate-100">
+              {$projectStore.backups ? $projectStore.backups.length : 0}
+            </div>
+            <div class="text-[10px] text-slate-500 font-mono mt-0.5">snapshots</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Running Alert Notice -->
+      {#if $projectStore.gameState === 'running'}
+        <div class="p-4 rounded-xl bg-emerald-950/50 border border-emerald-500/40 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0">
+              <Activity class="w-4 h-4 animate-pulse" />
+            </div>
+            <div>
+              <div class="text-xs font-bold text-emerald-200">Ikemen GO Game Process is Active</div>
+              <div class="text-[11px] text-emerald-400/80">Play and test in the native engine window. Click Stop Game when done.</div>
+            </div>
+          </div>
+          {#if $projectStore.canStop}
+            <button
+              type="button"
+              class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5 flex-shrink-0"
+              on:click={() => projectStore.stop()}
+            >
+              <Square class="w-3.5 h-3.5 fill-current" />
+              Force Close
+            </button>
           {/if}
         </div>
-      </div>
+      {/if}
     </div>
 
-    <!-- Active Session Notification Bar -->
-    {#if $projectStore.gameState === 'running'}
-      <div class="p-4 rounded-xl bg-emerald-950/40 border border-emerald-600/40 flex items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-            <Activity class="w-4 h-4 animate-pulse" />
+    <!-- Core Studio Workbenches -->
+    <div class="space-y-3">
+      <div class="flex items-center justify-between px-1">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Core Studio Workbenches</h2>
+        <span class="text-xs text-slate-500">Visual tools & maintenance suites</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Workbench 1: Roster Editor -->
+        <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 hover:border-indigo-500/50 transition-all duration-200 flex flex-col justify-between group shadow-sm hover:shadow-indigo-950/20">
+          <div class="space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center group-hover:scale-105 transition">
+              <Grid class="w-5 h-5" />
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-slate-100 group-hover:text-indigo-300 transition">Roster Editor</h3>
+                <span class="text-[10px] font-mono text-slate-500">select.def</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                Visual character grid & stage select screen manager with drag-and-drop.
+              </p>
+            </div>
           </div>
-          <div>
-            <div class="text-xs font-bold text-emerald-200">Ikemen GO is actively running</div>
-            <div class="text-[11px] text-emerald-400/80">Play and test in the engine window. Use Stop Game when done.</div>
+
+          <div class="pt-4 mt-4 border-t border-dark-600/50">
+            <button
+              type="button"
+              class="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow"
+              on:click={onOpenRosterEditor}
+            >
+              <span>Open Roster Editor</span>
+              <ArrowRight class="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
-        {#if $projectStore.canStop}
-          <button
-            type="button"
-            class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5"
-            on:click={() => projectStore.stop()}
-          >
-            <Square class="w-3.5 h-3.5 fill-current" />
-            Force Close
-          </button>
-        {/if}
-      </div>
-    {/if}
 
-    <!-- Quick Folder Access Grid -->
-    <div>
-      <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 px-1">Project Asset Directories</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {#each folderShortcuts as sc}
-          <button
-            type="button"
-            class="p-4 rounded-xl bg-dark-800/80 hover:bg-dark-700/80 border border-dark-600/60 hover:border-dark-600 flex items-start gap-3.5 text-left transition group shadow-sm"
-            on:click={() => projectStore.openFolder(sc.subpath)}
-          >
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br {sc.color} border flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition">
-              {#if sc.subpath === 'chars'}
-                <Users class="w-5 h-5" />
-              {:else if sc.subpath === 'stages'}
-                <Mountain class="w-5 h-5" />
-              {:else if sc.subpath === 'data'}
-                <FileCode class="w-5 h-5" />
-              {:else if sc.subpath === 'font'}
-                <Type class="w-5 h-5" />
-              {:else}
-                <Music class="w-5 h-5" />
-              {/if}
+        <!-- Workbench 2: Asset Vault Library -->
+        <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 hover:border-brand-500/50 transition-all duration-200 flex flex-col justify-between group shadow-sm hover:shadow-purple-950/20">
+          <div class="space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500/20 to-pink-500/20 text-brand-300 border border-brand-500/30 flex items-center justify-center group-hover:scale-105 transition">
+              <Sparkles class="w-5 h-5" />
             </div>
-            <div class="space-y-0.5 min-w-0 flex-1">
-              <div class="flex items-center justify-between">
-                <span class="text-sm font-semibold text-slate-200 group-hover:text-white transition">{sc.label}</span>
-                <span class="font-mono text-[10px] text-slate-500">{sc.subpath}/</span>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-slate-100 group-hover:text-brand-300 transition">Asset Vault</h3>
+                <span class="text-[10px] font-semibold text-brand-400 bg-brand-500/10 px-1.5 py-0.5 rounded">Library</span>
               </div>
-              <p class="text-xs text-slate-400 line-clamp-1">{sc.desc}</p>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                Link fighters & stages from your centralized vault library without duplicating disk space.
+              </p>
             </div>
-          </button>
-        {/each}
+          </div>
 
-        <!-- select.def roster quick view -->
-        <button
-          type="button"
-          class="p-4 rounded-xl bg-dark-800/80 hover:bg-dark-700/80 border border-dark-600/60 hover:border-indigo-500/50 flex items-start gap-3.5 text-left transition group shadow-sm ring-1 ring-transparent hover:ring-indigo-500/20"
-          on:click={onOpenRosterEditor}
-        >
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition">
-            <Grid class="w-5 h-5" />
+          <div class="pt-4 mt-4 border-t border-dark-600/50">
+            <button
+              type="button"
+              class="w-full py-2 px-3 rounded-xl bg-dark-700 hover:bg-dark-650 hover:border-brand-500/40 border border-dark-600 text-brand-300 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm"
+              on:click={() => handleOpenVaultFor('fighters')}
+            >
+              <Plus class="w-3.5 h-3.5" />
+              <span>Link From Vault</span>
+            </button>
           </div>
-          <div class="space-y-0.5 min-w-0 flex-1">
-            <div class="flex items-center justify-between">
-              <span class="text-sm font-semibold text-slate-200 group-hover:text-indigo-300 transition">Roster & Select Screen</span>
-              <span class="font-mono text-[10px] text-slate-500">select.def</span>
+        </div>
+
+        <!-- Workbench 3: Maintenance & Repair Hub -->
+        <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 hover:border-cyan-500/50 transition-all duration-200 flex flex-col justify-between group shadow-sm hover:shadow-cyan-950/20">
+          <div class="space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center group-hover:scale-105 transition">
+              <Wrench class="w-5 h-5" />
             </div>
-            <p class="text-xs text-slate-400 line-clamp-1">Visual Character & Stage select screen manager</p>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-slate-100 group-hover:text-cyan-300 transition">Repair Hub</h3>
+                <span class="text-[10px] font-mono text-slate-500">Diagnostics</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                Fix OpenGL 3.3 configs, sync stock files, verify integrity, and inspect project diffs.
+              </p>
+            </div>
           </div>
-        </button>
+
+          <div class="pt-4 mt-4 border-t border-dark-600/50">
+            <button
+              type="button"
+              class="w-full py-2 px-3 rounded-xl bg-dark-700 hover:bg-dark-650 hover:border-cyan-500/40 border border-dark-600 text-cyan-300 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm"
+              on:click={handleVerifyClick}
+            >
+              <ShieldCheck class="w-3.5 h-3.5" />
+              <span>Open Repair Hub</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Workbench 4: Engine Settings & Config -->
+        <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 hover:border-amber-500/50 transition-all duration-200 flex flex-col justify-between group shadow-sm hover:shadow-amber-950/20">
+          <div class="space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center group-hover:scale-105 transition">
+              <Sliders class="w-5 h-5" />
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-slate-100 group-hover:text-amber-300 transition">Game Settings</h3>
+                <span class="text-[10px] font-mono text-slate-500">config.ini</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                Configure resolution, window mode, shaders, sound volume, and controls.
+              </p>
+            </div>
+          </div>
+
+          <div class="pt-4 mt-4 border-t border-dark-600/50">
+            <button
+              type="button"
+              class="w-full py-2 px-3 rounded-xl bg-dark-700 hover:bg-dark-650 hover:border-amber-500/40 border border-dark-600 text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm"
+              on:click={() => (showGameConfigModal = true)}
+            >
+              <Sliders class="w-3.5 h-3.5" />
+              <span>Edit Config</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Bottom Actions -->
-    <div class="pt-4 flex items-center justify-between border-t border-dark-600/40">
+    <!-- Project Asset Directories -->
+    <div class="space-y-3">
+      <div class="flex items-center justify-between px-1">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Project Asset Directories</h2>
+        <span class="text-xs text-slate-500">Open on disk or import assets directly</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+        {#each folderShortcuts as sc}
+          <div
+            class="p-4 rounded-xl bg-dark-800/90 border border-dark-600/60 hover:border-dark-600 flex flex-col justify-between gap-3 text-left transition group shadow-sm"
+          >
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br {sc.color} border flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition">
+                  {#if sc.subpath === 'chars'}
+                    <Users class="w-4 h-4" />
+                  {:else if sc.subpath === 'stages'}
+                    <Mountain class="w-4 h-4" />
+                  {:else if sc.subpath === 'data'}
+                    <FileCode class="w-4 h-4" />
+                  {:else if sc.subpath === 'font'}
+                    <Type class="w-4 h-4" />
+                  {:else}
+                    <Music class="w-4 h-4" />
+                  {/if}
+                </div>
+                <span class="font-mono text-[10px] text-slate-500 px-2 py-0.5 bg-dark-900 rounded-md border border-dark-700/50">
+                  {sc.subpath}/
+                </span>
+              </div>
+
+              <div>
+                <h4 class="text-sm font-semibold text-slate-200 group-hover:text-white transition">
+                  {sc.label}
+                </h4>
+                <p class="text-[11px] text-slate-400 line-clamp-2 mt-0.5 leading-snug">
+                  {sc.desc}
+                </p>
+              </div>
+            </div>
+
+            <!-- Card Actions -->
+            <div class="flex items-center gap-1.5 pt-2 border-t border-dark-600/40">
+              <button
+                type="button"
+                class="flex-1 py-1.5 px-2 bg-dark-700 hover:bg-dark-600 text-slate-300 text-[11px] font-medium rounded-lg transition flex items-center justify-center gap-1"
+                on:click={() => projectStore.openFolder(sc.subpath)}
+                title="Open {sc.subpath}/ directory in File Explorer"
+              >
+                <FolderOpen class="w-3 h-3 text-indigo-400" />
+                <span>Open</span>
+              </button>
+
+              {#if sc.canAddVault}
+                <button
+                  type="button"
+                  class="py-1.5 px-2 bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 text-[11px] font-medium rounded-lg border border-brand-500/20 transition flex items-center justify-center gap-1"
+                  on:click={() => handleOpenVaultFor(sc.category)}
+                  title="Add {sc.label} from Vault library"
+                >
+                  <Plus class="w-3 h-3" />
+                  <span>Vault</span>
+                </button>
+              {/if}
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+
+    <!-- Engine Console & Log Preview Console -->
+    <div class="p-5 rounded-2xl bg-dark-800 border border-dark-600/70 shadow-lg space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <Terminal class="w-4 h-4 text-amber-400" />
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Engine Runtime Output & Logs</h3>
+          <span class="font-mono text-[10px] text-slate-500">save/ikemen.log</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="px-2.5 py-1 rounded-lg bg-dark-700 hover:bg-dark-600 text-slate-300 text-[11px] font-semibold flex items-center gap-1.5 transition"
+            on:click={fetchRecentLogs}
+            disabled={isRefreshingLogs}
+            title="Reload recent logs"
+          >
+            <RefreshCw class="w-3 h-3 text-slate-400 {isRefreshingLogs ? 'animate-spin' : ''}" />
+            <span>Refresh</span>
+          </button>
+
+          <button
+            type="button"
+            class="px-2.5 py-1 rounded-lg bg-dark-700 hover:bg-dark-600 text-slate-300 text-[11px] font-semibold flex items-center gap-1.5 transition"
+            on:click={() => projectStore.openLogs()}
+            title="Open log files in directory"
+          >
+            <ExternalLink class="w-3 h-3 text-indigo-400" />
+            <span>Open Folder</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Log Terminal Box -->
+      <div class="p-3.5 rounded-xl bg-dark-900 border border-dark-700/80 font-mono text-[11px] text-slate-300 h-32 overflow-y-auto leading-relaxed select-text">
+        {#if recentLogs && recentLogs.trim().length > 0}
+          <pre class="whitespace-pre-wrap">{recentLogs}</pre>
+        {:else}
+          <div class="h-full flex items-center justify-center text-slate-500 italic text-xs">
+            No runtime logs recorded yet. Launch the game or inspect save/ folder.
+          </div>
+        {/if}
+      </div>
+    </div>
+
+    <!-- Bottom Navigation Footer -->
+    <div class="pt-2 flex items-center justify-between border-t border-dark-600/40">
       <button
         type="button"
-        class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition"
+        class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition flex items-center gap-1"
         on:click={onBackToProjects}
       >
         &larr; Back to all projects
