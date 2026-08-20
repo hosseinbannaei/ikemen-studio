@@ -44,6 +44,11 @@
   let showRollbackModal = false;
   let selectedBackupId = '';
   let pendingEngineVersion = '';
+  let selectedEngineVersion = '';
+
+  $: if ($projectStore.current?.engine?.version && !showEngineConfirmModal) {
+    selectedEngineVersion = $projectStore.current.engine.version;
+  }
 
   let verificationReport: VerificationReport | null = null;
   let isVerifying = false;
@@ -92,6 +97,14 @@
     }
   }
 
+  function cancelEngineSwitch() {
+    showEngineConfirmModal = false;
+    pendingEngineVersion = '';
+    if ($projectStore.current?.engine?.version) {
+      selectedEngineVersion = $projectStore.current.engine.version;
+    }
+  }
+
   async function confirmEngineSwitch() {
     showEngineConfirmModal = false;
     if (pendingEngineVersion) {
@@ -136,7 +149,7 @@
             <!-- Engine Version Selector with Switcher -->
             <div class="flex items-center gap-1.5">
               <select
-                value={$projectStore.current.engine.version}
+                bind:value={selectedEngineVersion}
                 on:change={handleEngineSelect}
                 disabled={isBusy}
                 class="text-xs font-mono px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30 font-semibold focus:outline-none focus:border-purple-400 cursor-pointer disabled:opacity-50"
@@ -501,7 +514,7 @@
       confirmLabel="Switch Engine"
       confirmVariant="primary"
       onConfirm={confirmEngineSwitch}
-      onCancel={() => (showEngineConfirmModal = false)}
+      onCancel={cancelEngineSwitch}
     />
   {/if}
 
