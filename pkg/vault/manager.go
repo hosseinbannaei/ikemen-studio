@@ -149,6 +149,17 @@ func (vm *VaultManager) GetVault(vaultID string) (*VaultInfo, string, error) {
 		return nil, "", err
 	}
 
+	if vaultID == "" || vaultID == "all" || vaultID == "vault-default" {
+		for _, v := range vaults {
+			if v.IsDefault || v.ID == "vault-default" {
+				return &v, v.Path, nil
+			}
+		}
+		if len(vaults) > 0 {
+			return &vaults[0], vaults[0].Path, nil
+		}
+	}
+
 	for _, v := range vaults {
 		if v.ID == vaultID {
 			return &v, v.Path, nil
@@ -339,9 +350,28 @@ func (vm *VaultManager) UpdateVaultAsset(vaultID, assetKey string, update AssetM
 	vm.mu.Lock()
 	defer vm.mu.Unlock()
 
-	_, vaultPath, err := vm.GetVault(vaultID)
-	if err != nil {
-		return err
+	var vaultPath string
+	if vaultID != "" && vaultID != "all" {
+		if _, vPath, err := vm.GetVault(vaultID); err == nil {
+			vaultPath = vPath
+		}
+	}
+
+	if vaultPath == "" {
+		// Auto-locate owning vault
+		vaults, _ := vm.GetVaults()
+		for _, v := range vaults {
+			if manifest, err := LoadManifest(v.Path); err == nil {
+				if _, exists := manifest.Assets[assetKey]; exists {
+					vaultPath = v.Path
+					break
+				}
+			}
+		}
+	}
+
+	if vaultPath == "" {
+		return fmt.Errorf("asset %s not found in any registered vault", assetKey)
 	}
 
 	manifest, err := LoadManifest(vaultPath)
@@ -351,7 +381,7 @@ func (vm *VaultManager) UpdateVaultAsset(vaultID, assetKey string, update AssetM
 
 	asset, exists := manifest.Assets[assetKey]
 	if !exists {
-		return fmt.Errorf("asset %s not found in vault %s", assetKey, vaultID)
+		return fmt.Errorf("asset %s not found in vault %s", assetKey, vaultPath)
 	}
 
 	if update.DisplayName != "" {
@@ -382,9 +412,28 @@ func (vm *VaultManager) DeleteVaultAsset(vaultID, assetKey string) error {
 	vm.mu.Lock()
 	defer vm.mu.Unlock()
 
-	_, vaultPath, err := vm.GetVault(vaultID)
-	if err != nil {
-		return err
+	var vaultPath string
+	if vaultID != "" && vaultID != "all" {
+		if _, vPath, err := vm.GetVault(vaultID); err == nil {
+			vaultPath = vPath
+		}
+	}
+
+	if vaultPath == "" {
+		// Auto-locate owning vault
+		vaults, _ := vm.GetVaults()
+		for _, v := range vaults {
+			if manifest, err := LoadManifest(v.Path); err == nil {
+				if _, exists := manifest.Assets[assetKey]; exists {
+					vaultPath = v.Path
+					break
+				}
+			}
+		}
+	}
+
+	if vaultPath == "" {
+		return fmt.Errorf("asset %s not found in any registered vault", assetKey)
 	}
 
 	manifest, err := LoadManifest(vaultPath)
@@ -394,7 +443,7 @@ func (vm *VaultManager) DeleteVaultAsset(vaultID, assetKey string) error {
 
 	asset, exists := manifest.Assets[assetKey]
 	if !exists {
-		return fmt.Errorf("asset %s not found in vault %s", assetKey, vaultID)
+		return fmt.Errorf("asset %s not found in vault %s", assetKey, vaultPath)
 	}
 
 	// Remove physical folder

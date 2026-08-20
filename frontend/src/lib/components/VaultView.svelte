@@ -396,12 +396,25 @@
 
                   <!-- Actions -->
                   <td class="py-2.5 px-4 text-right">
-                    <button
-                      class="px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white bg-dark-800 hover:bg-dark-700 border border-dark-600 rounded-lg transition"
-                      on:click|stopPropagation={() => vaultStore.setSelectedAsset(asset)}
-                    >
-                      Inspect
-                    </button>
+                    <div class="flex items-center justify-end gap-1.5">
+                      <button
+                        class="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                        title="Delete from Vault"
+                        on:click|stopPropagation={() => {
+                          if (confirm(`Delete ${asset.display_name || asset.key} from Vault?`)) {
+                            vaultStore.deleteAsset($vaultStore.activeVaultId, asset.key);
+                          }
+                        }}
+                      >
+                        <Trash2 class="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        class="px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white bg-dark-800 hover:bg-dark-700 border border-dark-600 rounded-lg transition"
+                        on:click|stopPropagation={() => vaultStore.setSelectedAsset(asset)}
+                      >
+                        Inspect
+                      </button>
+                    </div>
                   </td>
                 </tr>
               {/each}
@@ -416,7 +429,7 @@
   {#if $vaultStore.selectedAsset}
     <VaultInspector
       asset={$vaultStore.selectedAsset}
-      activeVaultId={$vaultStore.activeVaultId !== 'all' ? $vaultStore.activeVaultId : 'vault-default'}
+      activeVaultId={$vaultStore.activeVaultId}
       onClose={() => vaultStore.setSelectedAsset(null)}
     />
   {/if}
