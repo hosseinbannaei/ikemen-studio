@@ -109,7 +109,30 @@
 
   $: totalGridCells = Math.max(gridColumns * gridRows, roster?.slots.length || 0);
 
-  // Character frequency map to detect duplicates
+  // Reactive flat array of slot objects for the grid — Svelte tracks every element.
+  // This is the key: when roster.slots changes (spread), gridSlots recomputes and the {#each} re-renders.
+  $: gridSlots = (() => {
+    type SlotCell = { slot: RosterCharacterSlot; idx: number; isVirtual: boolean };
+    const cells: SlotCell[] = [];
+    if (!roster) return cells;
+    for (let i = 0; i < totalGridCells; i++) {
+      if (i < roster.slots.length) {
+        cells.push({ slot: roster.slots[i], idx: i, isVirtual: false });
+      } else {
+        cells.push({
+          slot: { index: i, type: 'empty' as const, character: '', include_in_arcade: true },
+          idx: i,
+          isVirtual: true,
+        });
+      }
+    }
+    return cells;
+  })();
+
+  // Confirmation state for destructive actions
+  let confirmingClearRoster = false;
+
+
   $: characterCounts = (() => {
     const counts: Record<string, number> = {};
     if (!roster) return counts;
@@ -209,11 +232,17 @@
   }
 
   function clearEntireRoster() {
+    // Show in-app confirm instead of browser confirm() which doesn't work in Wails
+    confirmingClearRoster = true;
+  }
+
+  function confirmClearExecute() {
     if (!roster) return;
     roster.slots = [];
     selectedSlotIndex = null;
     selectedGridSlots = new Set();
     gridRows = Math.max(1, roster.grid?.rows || 10);
+    confirmingClearRoster = false;
   }
 
   function shuffleRosterLayout() {
@@ -1093,9 +1122,7 @@
             }"
             style="grid-template-columns: repeat({gridColumns}, minmax(0, 1fr));"
           >
-            {#each Array(totalGridCells) as _, idx}
-              {@const slot = getSlotAt(idx)}
-              {@const isVirtual = idx >= (roster?.slots.length || 0)}
+            {#each gridSlots as { slot, idx, isVirtual } (idx)}
               {@const isMultiSelected = selectedGridSlots.has(idx)}
               {@const dupCount = slot.character ? characterCounts[slot.character.toLowerCase()] || 0 : 0}
               <!-- svelte-ignore a11y_click_to_play -->
@@ -1511,4 +1538,47 @@
       </aside>
     {/if}
   </div>
+
+  <!-- Confirm Clear Roster Modal -->
+  {#if confirmingClearRoster}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div
+      class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center"
+      on:click={() => (confirmingClearRoster = false)}
+    >
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div
+        class="bg-dark-850 border border-dark-600 rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 space-y-4"
+        on:click|stopPropagation
+      >
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center flex-shrink-0">
+            <RotateCcw class="w-5 h-5 text-rose-400" />
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-100">Clear Entire Roster?</h3>
+            <p class="text-xs text-slate-400 mt-0.5">This will remove all {roster?.slots.length || 0} character slots from the grid. This action cannot be undone unless you reload without saving.</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 pt-1">
+          <button
+            type="button"
+            class="flex-1 py-2 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition shadow-lg shadow-rose-950/50"
+            on:click={confirmClearExecute}
+          >
+            Yes, Clear All
+          </button>
+          <button
+            type="button"
+            class="flex-1 py-2 px-4 rounded-xl bg-dark-800 hover:bg-dark-700 border border-dark-600 text-slate-300 text-xs font-semibold transition"
+            on:click={() => (confirmingClearRoster = false)}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
 </div>
