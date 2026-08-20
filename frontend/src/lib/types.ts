@@ -222,3 +222,41 @@ export interface ProjectFightersAndStages {
   stages: string[];
 }
 
+export interface RosterCharacterSlot {
+  index: number;
+  type: 'character' | 'randomselect' | 'empty' | 'disabled';
+  character?: string;
+  display_name?: string;
+  author?: string;
+  portrait_base64?: string;
+  home_stage?: string;
+  music?: string;
+  order?: number;
+  include_in_arcade?: boolean;
+  raw_line?: string;
+}
+
+export interface RosterGridInfo {
+  rows: number;
+  columns: number;
+  wrapping: boolean;
+  show_empty_boxes: boolean;
+}
+
+export interface RosterAvailableCharacter {
+  name: string;
+  display_name: string;
+  author: string;
+  portrait_base64: string;
+  is_linked: boolean;
+}
+
+export interface ProjectRoster {
+  grid: RosterGridInfo;
+  slots: RosterCharacterSlot[];
+  extra_stages: string[];
+  available_characters: RosterAvailableCharacter[];
+  available_stages: string[];
+}
+
+

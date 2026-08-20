@@ -174,7 +174,7 @@
                 type="button"
                 class="p-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition flex-shrink-0"
                 title="Remove from recent list"
-                on:click={() => (projectToRemove = path)}
+                on:click|stopPropagation={() => (projectToRemove = path)}
               >
                 <Trash2 class="w-4 h-4" />
               </button>

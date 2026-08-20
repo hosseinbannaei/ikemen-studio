@@ -736,4 +736,43 @@ func (a *App) SelectMultipleArchivesDialog() ([]string, error) {
 	})
 }
 
+// GetProjectRoster returns the parsed select screen grid, slots, and available assets
+func (a *App) GetProjectRoster(projectDir string) (*project.ProjectRoster, error) {
+	return project.GetProjectRoster(projectDir)
+}
+
+// SaveProjectRoster saves the modified select screen roster configuration to data/select.def
+func (a *App) SaveProjectRoster(projectDir string, roster project.ProjectRoster) error {
+	return project.SaveProjectRoster(projectDir, roster)
+}
+
+// ExportProjectAssetsToVault scans the project chars and stages and imports them into a vault
+func (a *App) ExportProjectAssetsToVault(projectDir, targetVaultID string) (*vault.IngestResult, error) {
+	if a.vaultManager == nil {
+		vm, err := vault.NewVaultManager()
+		if err != nil {
+			return nil, err
+		}
+		a.vaultManager = vm
+	}
+
+	charsDir := filepath.Join(projectDir, "chars")
+	stagesDir := filepath.Join(projectDir, "stages")
+	var paths []string
+
+	if _, err := os.Stat(charsDir); err == nil {
+		paths = append(paths, charsDir)
+	}
+	if _, err := os.Stat(stagesDir); err == nil {
+		paths = append(paths, stagesDir)
+	}
+
+	if len(paths) == 0 {
+		return &vault.IngestResult{ImportedCount: 0}, nil
+	}
+
+	return a.vaultManager.IngestMultiple(targetVaultID, paths, "auto")
+}
+
+
 

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { engineStore } from '../stores/engineStore';
   import { projectStore } from '../stores/projectStore';
+  import { vaultStore } from '../stores/vaultStore';
   import type { ExistingGameInspection, ImportOptions } from '../types';
   import { SelectDirectoryDialog } from '../../../wailsjs/go/main/App';
   import {
@@ -23,6 +24,7 @@
     Music,
     Type,
     AlertTriangle,
+    Package,
   } from 'lucide-svelte';
 
   export let inspection: ExistingGameInspection;
@@ -35,6 +37,10 @@
   let targetDir = `${inspection.sourcePath}_studio`;
   let author = '';
   let importing = false;
+
+  // Vault auto-ingestion options
+  let registerInVault = true;
+  let targetVaultId = 'vault-default';
 
   // Selected engine version for the chosen mode
   let selectedEngine = $engineStore.installed[0]?.version || 'nightly';
@@ -50,9 +56,26 @@
   onMount(async () => {
     await engineStore.loadInstalled();
     await engineStore.loadAvailable();
+    await vaultStore.loadVaults();
 
-    if (mode === 'legacy_match' && inspection.detectedEngineVersion) {
-      selectedEngine = inspection.detectedEngineVersion;
+    // Smart engine matching
+    if (inspection.detectedEngineVersion) {
+      const match = $engineStore.installed.find(
+        (e) => e.version.toLowerCase() === inspection.detectedEngineVersion?.toLowerCase()
+      );
+      if (match) {
+        selectedEngine = match.version;
+      } else {
+        const nightlyInstalled = $engineStore.installed.find((e) => e.version.includes('nightly'));
+        if (nightlyInstalled) {
+          selectedEngine = nightlyInstalled.version;
+        }
+      }
+    } else {
+      const nightlyInstalled = $engineStore.installed.find((e) => e.version.includes('nightly'));
+      if (nightlyInstalled) {
+        selectedEngine = nightlyInstalled.version;
+      }
     }
   });
 
@@ -100,9 +123,10 @@
     if (!projectName.trim() || !targetDir.trim()) return;
 
     importing = true;
+    const finalTargetDir = targetDir.trim();
     const opts: ImportOptions = {
       sourceDir: inspection.sourcePath,
-      targetDir: targetDir.trim(),
+      targetDir: finalTargetDir,
       projectName: projectName.trim(),
       engineVersion: selectedEngine,
       author: author.trim(),
@@ -116,6 +140,17 @@
     };
 
     const ok = await projectStore.importExistingWithOptions(opts);
+
+    // If requested, auto-ingest into Vault
+    if (ok && registerInVault) {
+      try {
+        const pathsToIngest = [`${finalTargetDir}/chars`, `${finalTargetDir}/stages`];
+        await vaultStore.ingestMultiple(pathsToIngest, targetVaultId, 'auto');
+      } catch (e) {
+        console.warn('Vault auto-ingest notice:', e);
+      }
+    }
+
     importing = false;
 
     if (ok) {
@@ -404,6 +439,43 @@
             class="w-full bg-dark-900 border border-dark-600 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
           />
         </div>
+      </div>
+
+      <!-- Asset Vault Integration Option -->
+      <div class="p-4 rounded-xl bg-dark-900 border border-dark-600/70 space-y-3">
+        <label class="flex items-center gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            bind:checked={registerInVault}
+            class="rounded border-dark-600 bg-dark-800 text-brand-500 focus:ring-brand-500"
+          />
+          <div class="space-y-0.5">
+            <span class="font-bold text-xs text-slate-200 flex items-center gap-1.5">
+              <Package class="w-3.5 h-3.5 text-brand-400" />
+              <span>Import Fighters & Stages into Asset Vault</span>
+            </span>
+            <p class="text-[11px] text-slate-400">
+              Extracts SFF portraits, character metadata, and indexes them into your central Vault library.
+            </p>
+          </div>
+        </label>
+
+        {#if registerInVault}
+          <div class="pt-2 pl-6 flex items-center gap-3">
+            <label class="text-[11px] text-slate-400 font-semibold">Target Vault:</label>
+            <select
+              bind:value={targetVaultId}
+              class="bg-dark-800 border border-dark-600 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-brand-500"
+            >
+              {#each $vaultStore.vaults as v}
+                <option value={v.id}>{v.name} {v.is_default ? '(Default)' : ''}</option>
+              {/each}
+              {#if $vaultStore.vaults.length === 0}
+                <option value="vault-default">Default Vault</option>
+              {/if}
+            </select>
+          </div>
+        {/if}
       </div>
     </div>
 

@@ -40,7 +40,11 @@ import {
   ResetGameConfig,
   GetProjectLogs,
   GetProjectFightersAndStages,
+  GetProjectRoster,
+  SaveProjectRoster,
+  ExportProjectAssetsToVault,
 } from '../../../wailsjs/go/main/App';
+import type { ProjectRoster } from '../types';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
 import { toastStore } from './toastStore';
 
@@ -258,6 +262,17 @@ function createProjectStore() {
     try {
       await RemoveRecentProject(projectDir);
       toastStore.info('Removed from Recent', 'Project removed from workspace list');
+      update((s) => {
+        const isCurrent = s.current?.path === projectDir;
+        return {
+          ...s,
+          current: isCurrent ? null : s.current,
+          isRunning: isCurrent ? false : s.isRunning,
+          gameState: isCurrent ? 'idle' : s.gameState,
+          canStop: isCurrent ? false : s.canStop,
+          recent: s.recent.filter((p) => p !== projectDir),
+        };
+      });
       await loadRecent();
     } catch (err: any) {
       toastStore.error('Removal Error', err?.message || 'Could not remove project from recent list');
@@ -642,6 +657,68 @@ function createProjectStore() {
     }
   }
 
+  async function loadRoster(projectDir?: string): Promise<ProjectRoster | null> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return null;
+
+    try {
+      const roster = await GetProjectRoster(targetPath);
+      return (roster as unknown as ProjectRoster) || null;
+    } catch (err: any) {
+      console.error('Failed to load project roster:', err);
+      toastStore.error('Roster Error', err?.message || 'Could not load select.def configuration');
+      return null;
+    }
+  }
+
+  async function saveRoster(roster: ProjectRoster, projectDir?: string): Promise<boolean> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return false;
+
+    try {
+      await SaveProjectRoster(targetPath, roster as any);
+      toastStore.success('Roster Saved', 'Updated data/select.def');
+      return true;
+    } catch (err: any) {
+      console.error('Failed to save roster:', err);
+      toastStore.error('Save Failed', err?.message || 'Could not save select.def');
+      return false;
+    }
+  }
+
+  async function exportToVault(targetVaultId: string, projectDir?: string): Promise<boolean> {
+    let targetPath = projectDir || '';
+    if (!targetPath) {
+      update((s) => {
+        targetPath = s.current?.path || '';
+        return s;
+      });
+    }
+    if (!targetPath) return false;
+
+    try {
+      const res = await ExportProjectAssetsToVault(targetPath, targetVaultId);
+      toastStore.success('Exported to Vault', `Successfully imported ${res.imported_count} assets into Vault`);
+      return true;
+    } catch (err: any) {
+      console.error('Export to vault failed:', err);
+      toastStore.error('Export Failed', err?.message || 'Could not export assets to vault');
+      return false;
+    }
+  }
+
   function dismissCrash() {
     update((s) => ({ ...s, activeCrash: null }));
   }
@@ -678,6 +755,9 @@ function createProjectStore() {
     openLogs,
     dismissCrash,
     getFightersAndStages,
+    loadRoster,
+    saveRoster,
+    exportToVault,
   };
 }
 

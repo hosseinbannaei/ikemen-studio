@@ -33,11 +33,13 @@
     RotateCcw,
     Sparkles,
     Package,
-    Plus
+    Plus,
+    Grid,
   } from 'lucide-svelte';
 
   export let onBackToProjects: () => void;
   export let onOpenRepairHub: () => void;
+  export let onOpenRosterEditor: () => void;
 
   let showVerifyOptionsModal = false;
   let showVerifyReportModal = false;
@@ -219,6 +221,17 @@
 
         <!-- Action Controls -->
         <div class="flex items-center gap-2 flex-wrap">
+          <!-- Roster Editor -->
+          <button
+            type="button"
+            class="px-3 py-2.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
+            on:click={onOpenRosterEditor}
+            title="Open Visual Character Select & Roster Editor"
+          >
+            <Grid class="w-3.5 h-3.5 text-indigo-400" />
+            <span>Roster Editor</span>
+          </button>
+
           <!-- Add from Vault -->
           <button
             type="button"
@@ -458,18 +471,18 @@
         <!-- select.def roster quick view -->
         <button
           type="button"
-          class="p-4 rounded-xl bg-dark-800/80 hover:bg-dark-700/80 border border-dark-600/60 hover:border-dark-600 flex items-start gap-3.5 text-left transition group shadow-sm"
-          on:click={() => projectStore.openFolder('data')}
+          class="p-4 rounded-xl bg-dark-800/80 hover:bg-dark-700/80 border border-dark-600/60 hover:border-indigo-500/50 flex items-start gap-3.5 text-left transition group shadow-sm ring-1 ring-transparent hover:ring-indigo-500/20"
+          on:click={onOpenRosterEditor}
         >
           <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition">
-            <FileCode class="w-5 h-5" />
+            <Grid class="w-5 h-5" />
           </div>
           <div class="space-y-0.5 min-w-0 flex-1">
             <div class="flex items-center justify-between">
-              <span class="text-sm font-semibold text-slate-200 group-hover:text-white transition">Roster (select.def)</span>
-              <span class="font-mono text-[10px] text-slate-500">data/</span>
+              <span class="text-sm font-semibold text-slate-200 group-hover:text-indigo-300 transition">Roster & Select Screen</span>
+              <span class="font-mono text-[10px] text-slate-500">select.def</span>
             </div>
-            <p class="text-xs text-slate-400 line-clamp-1">Character & Stage roster configuration</p>
+            <p class="text-xs text-slate-400 line-clamp-1">Visual Character & Stage select screen manager</p>
           </div>
         </button>
       </div>

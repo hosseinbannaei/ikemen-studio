@@ -197,3 +197,16 @@ export function VerifyAndRepairProject(arg1) {
 export function VerifyAndRepairProjectWithMode(arg1, arg2) {
   return window['go']['main']['App']['VerifyAndRepairProjectWithMode'](arg1, arg2);
 }
+
+export function GetProjectRoster(arg1) {
+  return window['go']['main']['App']['GetProjectRoster'](arg1);
+}
+
+export function SaveProjectRoster(arg1, arg2) {
+  return window['go']['main']['App']['SaveProjectRoster'](arg1, arg2);
+}
+
+export function ExportProjectAssetsToVault(arg1, arg2) {
+  return window['go']['main']['App']['ExportProjectAssetsToVault'](arg1, arg2);
+}
+

@@ -103,3 +103,10 @@ export function UpdateVaultAsset(arg1:string,arg2:string,arg3:vault.AssetMetadat
 export function VerifyAndRepairProject(arg1:string):Promise<project.VerificationReport>;
 
 export function VerifyAndRepairProjectWithMode(arg1:string,arg2:boolean):Promise<project.VerificationReport>;
+
+export function GetProjectRoster(arg1:string):Promise<project.ProjectRoster>;
+
+export function SaveProjectRoster(arg1:string,arg2:project.ProjectRoster):Promise<void>;
+
+export function ExportProjectAssetsToVault(arg1:string,arg2:string):Promise<vault.IngestResult>;
+

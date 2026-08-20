@@ -9,6 +9,7 @@
   import ProjectsView from './lib/components/ProjectsView.svelte';
   import ProjectWorkspaceView from './lib/components/ProjectWorkspaceView.svelte';
   import ProjectRepairHubView from './lib/components/ProjectRepairHubView.svelte';
+  import RosterEditorView from './lib/components/RosterEditorView.svelte';
   import EngineManagerView from './lib/components/EngineManagerView.svelte';
   import VaultView from './lib/components/VaultView.svelte';
   import SettingsView from './lib/components/SettingsView.svelte';
@@ -19,7 +20,7 @@
   import Toast from './lib/components/Toast.svelte';
 
   let activeTab: 'projects' | 'vault' | 'engines' | 'settings' = 'projects';
-  let projectsSubView: 'list' | 'workspace' | 'repair' = 'list';
+  let projectsSubView: 'list' | 'workspace' | 'repair' | 'roster' = 'list';
 
   let showNewProjectModal = false;
   let showOpenProjectModal = false;
@@ -36,6 +37,13 @@
   });
 
   function handleSelectTab(tab: 'projects' | 'vault' | 'engines' | 'settings') {
+    if (tab === 'projects') {
+      if (activeTab === 'projects') {
+        projectsSubView = 'list';
+      } else if (!$projectStore.current) {
+        projectsSubView = 'list';
+      }
+    }
     activeTab = tab;
   }
 
@@ -57,6 +65,11 @@
     projectsSubView = 'repair';
   }
 
+  function handleOpenRosterEditor() {
+    activeTab = 'projects';
+    projectsSubView = 'roster';
+  }
+
   $: breadcrumbItems = (() => {
     if (activeTab === 'projects') {
       if (projectsSubView === 'repair' && $projectStore.current) {
@@ -64,6 +77,13 @@
           { label: 'Projects', onClick: () => (projectsSubView = 'list') },
           { label: $projectStore.current.name, onClick: () => (projectsSubView = 'workspace') },
           { label: 'Maintenance & Repair Hub' },
+        ];
+      }
+      if (projectsSubView === 'roster' && $projectStore.current) {
+        return [
+          { label: 'Projects', onClick: () => (projectsSubView = 'list') },
+          { label: $projectStore.current.name, onClick: () => (projectsSubView = 'workspace') },
+          { label: 'Roster & Select Screen' },
         ];
       }
       if (projectsSubView === 'workspace' && $projectStore.current) {
@@ -84,7 +104,7 @@
 
   $: backHandler = (() => {
     if (activeTab === 'projects') {
-      if (projectsSubView === 'repair') return handleBackToWorkspace;
+      if (projectsSubView === 'repair' || projectsSubView === 'roster') return handleBackToWorkspace;
       if (projectsSubView === 'workspace') return handleBackToProjectsList;
     }
     return null;
@@ -92,7 +112,7 @@
 
   $: backLabel = (() => {
     if (activeTab === 'projects') {
-      if (projectsSubView === 'repair') return 'Workspace';
+      if (projectsSubView === 'repair' || projectsSubView === 'roster') return 'Workspace';
       if (projectsSubView === 'workspace') return 'Projects';
     }
     return 'Back';
@@ -114,7 +134,7 @@
       items={breadcrumbItems}
       onBack={backHandler}
       {backLabel}
-      showPlayButton={activeTab === 'projects' && (projectsSubView === 'workspace' || projectsSubView === 'repair')}
+      showPlayButton={activeTab === 'projects' && (projectsSubView === 'workspace' || projectsSubView === 'repair' || projectsSubView === 'roster')}
     />
 
     <!-- Main Content Tab Router -->
@@ -122,10 +142,13 @@
       {#if activeTab === 'projects'}
         {#if projectsSubView === 'repair' && $projectStore.current}
           <ProjectRepairHubView onBackToWorkspace={handleBackToWorkspace} />
+        {:else if projectsSubView === 'roster' && $projectStore.current}
+          <RosterEditorView onBackToWorkspace={handleBackToWorkspace} />
         {:else if projectsSubView === 'workspace' && $projectStore.current}
           <ProjectWorkspaceView
             onBackToProjects={handleBackToProjectsList}
             onOpenRepairHub={handleOpenRepairHub}
+            onOpenRosterEditor={handleOpenRosterEditor}
           />
         {:else}
           <ProjectsView
