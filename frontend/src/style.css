@@ -3,22 +3,22 @@
 @tailwind utilities;
 
 :root {
-  --bg-app-rgb: 15, 17, 23;        /* #0f1117 */
-  --bg-sidebar-rgb: 19, 22, 31;    /* #13161f */
-  --bg-surface-rgb: 22, 25, 34;    /* #161922 */
-  --bg-hover-rgb: 31, 36, 48;      /* #1f2430 */
-  --bg-card-rgb: 31, 36, 48;       /* #1f2430 */
-  --bg-border-rgb: 43, 50, 66;     /* #2b3242 */
+  --bg-app-rgb: 15 17 23;        /* #0f1117 */
+  --bg-sidebar-rgb: 19 22 31;    /* #13161f */
+  --bg-surface-rgb: 22 25 34;    /* #161922 */
+  --bg-hover-rgb: 31 36 48;      /* #1f2430 */
+  --bg-card-rgb: 31 36 48;       /* #1f2430 */
+  --bg-border-rgb: 43 50 66;     /* #2b3242 */
   color-scheme: dark;
 }
 
 :root.light, html.light {
-  --bg-app-rgb: 248, 250, 252;     /* #f8fafc */
-  --bg-sidebar-rgb: 241, 245, 249; /* #f1f5f9 */
-  --bg-surface-rgb: 255, 255, 255; /* #ffffff */
-  --bg-hover-rgb: 241, 245, 249;   /* #f1f5f9 */
-  --bg-card-rgb: 255, 255, 255;    /* #ffffff */
-  --bg-border-rgb: 203, 213, 225;  /* #cbd5e1 */
+  --bg-app-rgb: 248 250 252;     /* #f8fafc */
+  --bg-sidebar-rgb: 241 245 249; /* #f1f5f9 */
+  --bg-surface-rgb: 255 255 255; /* #ffffff */
+  --bg-hover-rgb: 241 245 249;   /* #f1f5f9 */
+  --bg-card-rgb: 255 255 255;    /* #ffffff */
+  --bg-border-rgb: 203 213 225;  /* #cbd5e1 */
   color-scheme: light;
 }
 
