@@ -481,7 +481,13 @@ func resolveCharInfo(projectDir, charName string) (string, string, string, strin
 		if sffPath != "" {
 			_, b64, _ := vault.ExtractAndCachePortrait(projectDir, "chars/"+cleanName, sffPath)
 			b64Portrait = b64
+		} else {
+			_, b64, _ := vault.ExtractAndCachePortrait(projectDir, "chars/"+cleanName, "")
+			b64Portrait = b64
 		}
+	} else {
+		_, b64, _ := vault.ExtractAndCachePortrait(projectDir, "chars/"+cleanName, "")
+		b64Portrait = b64
 	}
 
 	// Disambiguate duplicate character display names like kfm variants
@@ -504,15 +510,26 @@ func isCharInDir(projectDir, name string) bool {
 
 func findSystemDef(projectDir string) string {
 	candidates := []string{
+		filepath.Join(projectDir, "data", "ikemen1", "system.def"),
 		filepath.Join(projectDir, "data", "system.def"),
 		filepath.Join(projectDir, "data", "motif", "system.def"),
+		filepath.Join(projectDir, "data", "mugen1", "system.def"),
 	}
 	for _, c := range candidates {
 		if fileExists(c) {
 			return c
 		}
 	}
-	return ""
+
+	var found string
+	_ = filepath.Walk(filepath.Join(projectDir, "data"), func(p string, info os.FileInfo, err error) error {
+		if err == nil && !info.IsDir() && strings.EqualFold(filepath.Base(p), "system.def") && !strings.Contains(strings.ToLower(p), "system.base.def") {
+			found = p
+			return ioEOF()
+		}
+		return nil
+	})
+	return found
 }
 
 func fileExists(p string) bool {

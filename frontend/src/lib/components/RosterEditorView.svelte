@@ -38,9 +38,13 @@
   let roster: ProjectRoster | null = null;
   let selectedSlotIndex: number | null = null;
 
-  // Grid dimension overrides (can override system.def visually)
-  let gridColumns = 5;
-  let gridRows = 2;
+  // Grid dimension overrides (synced from system.def)
+  let gridColumns = 8;
+  let gridRows = 10;
+  let density: 'arcade' | 'medium' | 'large' = 'arcade';
+
+  // Hovered slot for arcade live preview
+  let hoveredSlotIndex: number | null = null;
 
   // Sidebar library state
   let libraryTab: 'project' | 'vault' | 'stages' = 'project';
@@ -65,14 +69,70 @@
     const data = await projectStore.loadRoster();
     if (data) {
       roster = data;
-      gridColumns = Math.max(1, data.grid?.columns || 5);
-      const totalSlots = data.slots.length;
-      gridRows = Math.max(2, Math.ceil(totalSlots / gridColumns));
+      gridColumns = Math.max(1, data.grid?.columns || 8);
+      gridRows = Math.max(1, data.grid?.rows || 10);
       if (data.slots.length > 0) {
         selectedSlotIndex = 0;
       }
     }
     loading = false;
+  }
+
+  $: totalGridCells = Math.max(gridColumns * gridRows, roster?.slots.length || 0);
+
+  function getSlotAt(idx: number): RosterCharacterSlot {
+    if (roster && idx < roster.slots.length) {
+      return roster.slots[idx];
+    }
+    return {
+      index: idx,
+      type: 'empty',
+      character: '',
+      include_in_arcade: true,
+    };
+  }
+
+  function ensureSlotCapacity(targetIdx: number) {
+    if (!roster) return;
+    while (roster.slots.length <= targetIdx) {
+      roster.slots.push({
+        index: roster.slots.length,
+        type: 'empty',
+        character: '',
+        include_in_arcade: true,
+      });
+    }
+  }
+
+  function fillRemainingWithRandom() {
+    if (!roster) return;
+    const maxCapacity = gridColumns * gridRows;
+    ensureSlotCapacity(maxCapacity - 1);
+    for (let i = 0; i < maxCapacity; i++) {
+      if (roster.slots[i].type === 'empty') {
+        roster.slots[i] = {
+          index: i,
+          type: 'randomselect',
+          character: 'randomselect',
+          display_name: 'Random Select',
+          include_in_arcade: true,
+        };
+      }
+    }
+    roster.slots = [...roster.slots];
+  }
+
+  function trimTrailingEmptySlots() {
+    if (!roster) return;
+    while (roster.slots.length > 0 && roster.slots[roster.slots.length - 1].type === 'empty') {
+      roster.slots.pop();
+    }
+    roster.slots = [...roster.slots];
+  }
+
+  function selectOrActivateSlot(idx: number) {
+    ensureSlotCapacity(idx);
+    selectedSlotIndex = idx;
   }
 
   async function handleSave() {
@@ -569,143 +629,205 @@
     </aside>
 
     <!-- 2. Middle Center Work Area (Interactive Grid or Extra Stages) -->
-    <main class="flex-1 flex flex-col min-w-0 bg-dark-900 overflow-y-auto p-6">
+    <main class="flex-1 flex flex-col min-w-0 bg-dark-900 overflow-y-auto p-5">
       {#if loading}
         <div class="flex-1 flex items-center justify-center">
           <div class="text-xs text-slate-400 animate-pulse">Loading select.def roster...</div>
         </div>
       {:else if activeView === 'grid' && roster}
         <!-- Grid Toolbar -->
-        <div class="flex items-center justify-between pb-4 mb-4 border-b border-dark-700/60">
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 mb-4 border-b border-dark-700/60 flex-shrink-0">
           <div class="flex items-center gap-3">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Select Screen Grid</span>
-            <div class="flex items-center gap-1.5 bg-dark-800 px-3 py-1 rounded-xl border border-dark-600/60 text-xs">
-              <span class="text-slate-400">Cols:</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+              <Grid class="w-3.5 h-3.5 text-indigo-400" />
+              <span>Select Screen Matrix</span>
+            </span>
+
+            <!-- Grid Dimensions -->
+            <div class="flex items-center gap-2 bg-dark-800 px-3 py-1 rounded-xl border border-dark-600/60 text-xs">
+              <span class="text-slate-400 text-[11px]">Cols:</span>
               <button
                 type="button"
-                class="px-1.5 py-0.5 rounded hover:bg-dark-700 font-bold"
+                class="px-1.5 py-0.2 rounded hover:bg-dark-700 font-bold text-slate-300"
                 on:click={() => (gridColumns = Math.max(1, gridColumns - 1))}
               >-</button>
-              <span class="font-mono text-indigo-400 font-bold px-1">{gridColumns}</span>
+              <span class="font-mono text-indigo-400 font-bold">{gridColumns}</span>
               <button
                 type="button"
-                class="px-1.5 py-0.5 rounded hover:bg-dark-700 font-bold"
+                class="px-1.5 py-0.2 rounded hover:bg-dark-700 font-bold text-slate-300"
                 on:click={() => (gridColumns = gridColumns + 1)}
               >+</button>
+
+              <span class="text-dark-600 mx-1">|</span>
+
+              <span class="text-slate-400 text-[11px]">Rows:</span>
+              <button
+                type="button"
+                class="px-1.5 py-0.2 rounded hover:bg-dark-700 font-bold text-slate-300"
+                on:click={() => (gridRows = Math.max(1, gridRows - 1))}
+              >-</button>
+              <span class="font-mono text-indigo-400 font-bold">{gridRows}</span>
+              <button
+                type="button"
+                class="px-1.5 py-0.2 rounded hover:bg-dark-700 font-bold text-slate-300"
+                on:click={() => (gridRows = gridRows + 1)}
+              >+</button>
+
+              <span class="text-[10px] text-slate-500 font-mono ml-1">
+                ({gridColumns * gridRows} total cells)
+              </span>
+            </div>
+
+            <!-- Density Switcher -->
+            <div class="flex items-center p-0.5 bg-dark-800 rounded-xl border border-dark-600/60 text-xs">
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition {density === 'arcade' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}"
+                on:click={() => (density = 'arcade')}
+              >
+                Arcade (Compact)
+              </button>
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition {density === 'medium' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}"
+                on:click={() => (density = 'medium')}
+              >
+                Medium
+              </button>
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition {density === 'large' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}"
+                on:click={() => (density = 'large')}
+              >
+                Large
+              </button>
             </div>
           </div>
 
+          <!-- Quick Fill Tools -->
           <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-dark-800 hover:bg-dark-700 border border-dark-600/60 text-xs font-semibold text-purple-300 transition"
+              title="Fill all remaining empty slots on screen with Random Select"
+              on:click={fillRemainingWithRandom}
+            >
+              <HelpCircle class="w-3.5 h-3.5 text-purple-400" />
+              <span>Fill Empty with ?</span>
+            </button>
+
+            <button
+              type="button"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-dark-800 hover:bg-dark-700 border border-dark-600/60 text-xs font-semibold text-slate-300 transition"
+              title="Remove trailing empty slots"
+              on:click={trimTrailingEmptySlots}
+            >
+              <span>Trim Empty</span>
+            </button>
+
             <button
               type="button"
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-dark-800 hover:bg-dark-700 border border-dark-600/60 text-xs font-semibold text-slate-300 transition"
               on:click={addEmptySlot}
             >
               <Plus class="w-3.5 h-3.5 text-indigo-400" />
-              <span>Empty Slot</span>
-            </button>
-
-            <button
-              type="button"
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-dark-800 hover:bg-dark-700 border border-dark-600/60 text-xs font-semibold text-purple-300 transition"
-              on:click={addRandomSelectSlot}
-            >
-              <HelpCircle class="w-3.5 h-3.5 text-purple-400" />
-              <span>Random Select</span>
+              <span>Add Slot</span>
             </button>
           </div>
         </div>
 
-        <!-- The Interactive Grid -->
-        <div
-          class="grid gap-3 flex-1 auto-rows-max"
-          style="grid-template-columns: repeat({gridColumns}, minmax(0, 1fr));"
-        >
-          {#each roster.slots as slot, idx}
-            <!-- svelte-ignore a11y_click_to_play -->
-            <div
-              class="group relative rounded-2xl border transition-all duration-150 cursor-pointer aspect-square flex flex-col justify-between p-2.5 {
-                selectedSlotIndex === idx
-                  ? 'border-indigo-500 bg-indigo-950/30 ring-2 ring-indigo-500/40 shadow-lg shadow-indigo-950/40'
-                  : 'border-dark-600/70 bg-dark-800/80 hover:bg-dark-800 hover:border-slate-500/60'
-              } {
-                slot.type === 'disabled' ? 'opacity-50 grayscale' : ''
-              }"
-              draggable="true"
-              on:click={() => (selectedSlotIndex = idx)}
-              on:dragstart={(e) => handleSlotDragStart(e, idx)}
-              on:dragover={handleSlotDragOver}
-              on:drop={(e) => handleSlotDrop(e, idx)}
-            >
-              <!-- Slot Top Index & Type Badge -->
-              <div class="flex items-center justify-between w-full text-[10px] text-slate-400">
-                <span class="font-mono font-bold">#{idx + 1}</span>
+        <!-- The Interactive Grid Matrix -->
+        <div class="flex-1 overflow-auto flex justify-center items-start">
+          <div
+            class="grid gap-2 p-2 bg-dark-950/60 border border-dark-700/60 rounded-2xl shadow-inner {
+              density === 'arcade' ? 'max-w-4xl' : density === 'medium' ? 'max-w-5xl' : 'w-full'
+            }"
+            style="grid-template-columns: repeat({gridColumns}, minmax(0, 1fr));"
+          >
+            {#each Array(totalGridCells) as _, idx}
+              {@const slot = getSlotAt(idx)}
+              {@const isVirtual = idx >= (roster?.slots.length || 0)}
+              <!-- svelte-ignore a11y_click_to_play -->
+              <div
+                class="group relative rounded-xl border transition-all duration-150 cursor-pointer flex flex-col justify-between overflow-hidden select-none {
+                  density === 'arcade' ? 'p-1.5 aspect-[4/3] min-h-[58px]' : density === 'medium' ? 'p-2 aspect-square min-h-[85px]' : 'p-3 aspect-square min-h-[115px]'
+                } {
+                  selectedSlotIndex === idx
+                    ? 'border-indigo-500 bg-indigo-950/40 ring-2 ring-indigo-500/50 shadow-lg shadow-indigo-950/50'
+                    : isVirtual || slot.type === 'empty'
+                    ? 'border-dark-700/60 bg-dark-900/40 hover:bg-dark-800/80 hover:border-dark-500'
+                    : 'border-dark-600/70 bg-dark-800/90 hover:bg-dark-800 hover:border-slate-500/60'
+                } {
+                  slot.type === 'disabled' ? 'opacity-50 grayscale' : ''
+                }"
+                draggable="true"
+                on:click={() => selectOrActivateSlot(idx)}
+                on:mouseenter={() => (hoveredSlotIndex = idx)}
+                on:mouseleave={() => (hoveredSlotIndex = null)}
+                on:dragstart={(e) => handleSlotDragStart(e, idx)}
+                on:dragover={handleSlotDragOver}
+                on:drop={(e) => handleSlotDrop(e, idx)}
+              >
+                <!-- Slot Top Index & Type Badge -->
+                <div class="flex items-center justify-between w-full text-[9px] text-slate-500 pointer-events-none">
+                  <span class="font-mono {selectedSlotIndex === idx ? 'text-indigo-400 font-bold' : ''}">#{idx + 1}</span>
 
-                {#if slot.type === 'randomselect'}
-                  <span class="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold text-[9px]">
-                    RANDOM
-                  </span>
-                {:else if slot.type === 'disabled'}
-                  <span class="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold text-[9px]">
-                    DISABLED
-                  </span>
-                {:else if slot.type === 'empty'}
-                  <span class="px-1.5 py-0.5 rounded bg-dark-700 text-slate-500 font-mono text-[9px]">
-                    EMPTY
-                  </span>
-                {:else if slot.order && slot.order > 0}
-                  <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold text-[9px] flex items-center gap-1">
-                    <Crown class="w-2.5 h-2.5" />
-                    <span>Boss {slot.order}</span>
-                  </span>
-                {/if}
-              </div>
+                  {#if slot.type === 'randomselect'}
+                    <span class="px-1 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold text-[8px]">
+                      ?
+                    </span>
+                  {:else if slot.type === 'disabled'}
+                    <span class="px-1 py-0.2 rounded bg-rose-500/20 text-rose-300 font-bold text-[8px]">
+                      OFF
+                    </span>
+                  {:else if slot.order && slot.order > 0}
+                    <span class="px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold text-[8px] flex items-center gap-0.5">
+                      <Crown class="w-2 h-2" />
+                      <span>{slot.order}</span>
+                    </span>
+                  {/if}
+                </div>
 
-              <!-- Slot Center: Thumbnail / Icon -->
-              <div class="flex-1 flex items-center justify-center my-1 overflow-hidden">
-                {#if slot.type === 'character' || slot.type === 'disabled'}
-                  {#if slot.portrait_base64}
-                    <img
-                      src={slot.portrait_base64}
-                      alt={slot.character}
-                      class="max-h-full max-w-full object-contain rounded drop-shadow-md group-hover:scale-105 transition duration-150"
-                    />
+                <!-- Slot Center: Thumbnail / Icon -->
+                <div class="flex-1 flex items-center justify-center overflow-hidden my-0.5 pointer-events-none">
+                  {#if slot.type === 'character' || slot.type === 'disabled'}
+                    {#if slot.portrait_base64}
+                      <img
+                        src={slot.portrait_base64}
+                        alt={slot.character}
+                        class="max-h-full max-w-full object-contain rounded drop-shadow group-hover:scale-105 transition duration-150"
+                      />
+                    {:else}
+                      <div class="w-7 h-7 rounded-lg bg-indigo-950/40 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                        <Users class="w-3.5 h-3.5" />
+                      </div>
+                    {/if}
+                  {:else if slot.type === 'randomselect'}
+                    <div class="w-7 h-7 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300 font-bold">
+                      ?
+                    </div>
                   {:else}
-                    <div class="w-12 h-12 rounded-xl bg-indigo-950/30 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                      <Users class="w-6 h-6" />
+                    <div class="w-6 h-6 rounded border border-dashed border-dark-700 flex items-center justify-center text-slate-600 group-hover:text-slate-400 group-hover:border-slate-500 transition">
+                      <Plus class="w-3 h-3" />
                     </div>
                   {/if}
-                {:else if slot.type === 'randomselect'}
-                  <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-inner">
-                    <HelpCircle class="w-7 h-7" />
-                  </div>
-                {:else}
-                  <div class="w-10 h-10 rounded-xl border border-dashed border-dark-600 flex items-center justify-center text-slate-600 group-hover:text-slate-400 group-hover:border-slate-500 transition">
-                    <Plus class="w-5 h-5" />
-                  </div>
-                {/if}
-              </div>
+                </div>
 
-              <!-- Slot Bottom: Character Name -->
-              <div class="w-full text-center">
-                {#if slot.type === 'character' || slot.type === 'disabled'}
-                  <div class="text-xs font-bold text-slate-100 truncate">
-                    {slot.display_name || slot.character}
-                  </div>
-                  {#if slot.home_stage}
-                    <div class="text-[9px] text-emerald-400 truncate flex items-center justify-center gap-1">
-                      <Mountain class="w-2.5 h-2.5 flex-shrink-0" />
-                      <span>{slot.home_stage.replace(/^stages\//i, '').replace(/\.def$/i, '')}</span>
+                <!-- Slot Bottom: Character Name -->
+                <div class="w-full text-center pointer-events-none">
+                  {#if slot.type === 'character' || slot.type === 'disabled'}
+                    <div class="text-[10px] font-bold text-slate-200 truncate leading-tight">
+                      {slot.display_name || slot.character}
                     </div>
+                  {:else if slot.type === 'randomselect'}
+                    <div class="text-[9px] font-bold text-purple-300 truncate">Random</div>
+                  {:else}
+                    <div class="text-[8px] text-slate-600 truncate">Empty</div>
                   {/if}
-                {:else if slot.type === 'randomselect'}
-                  <div class="text-[11px] font-bold text-purple-300">Random Select</div>
-                {:else}
-                  <div class="text-[10px] text-slate-500">Drop fighter here</div>
-                {/if}
+                </div>
               </div>
-            </div>
-          {/each}
+            {/each}
+          </div>
         </div>
       {:else if activeView === 'extra_stages' && roster}
         <!-- Extra Stages View -->

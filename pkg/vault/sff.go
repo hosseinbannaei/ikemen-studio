@@ -26,6 +26,11 @@ func ExtractAndCachePortrait(vaultDir, assetKey, sffPath string) (relPath string
 	outPath := filepath.Join(previewsDir, safeName)
 	relPath = filepath.Join(".previews", safeName)
 
+	// If cached PNG already exists on disk, reuse immediately
+	if cachedData, err := os.ReadFile(outPath); err == nil && len(cachedData) > 100 {
+		return relPath, "data:image/png;base64," + base64.StdEncoding.EncodeToString(cachedData), nil
+	}
+
 	var img image.Image
 
 	// 1. Try SFF extraction
