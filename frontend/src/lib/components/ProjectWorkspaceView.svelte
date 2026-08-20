@@ -49,6 +49,7 @@
     Palette,
     Swords,
     Film,
+    Search,
   } from 'lucide-svelte';
 
   export let onBackToProjects: () => void;

@@ -42,6 +42,10 @@
   }
 
   async function handleSelectRecent(path: string) {
+    if ($projectStore.current?.path === path) {
+      onOpenProjectWorkspace();
+      return;
+    }
     const ok = await projectStore.open(path);
     if (ok) {
       onOpenProjectWorkspace();

@@ -32,11 +32,11 @@
     isLoading = true;
     try {
       const res = await InspectProjectFile(projectDir, filePath);
-      inspection = res;
+      inspection = res as any;
       rawText = res.raw_content;
       originalText = res.raw_content;
     } catch (err: any) {
-      toastStore.addToast(`Failed to load file: ${err?.message || err}`, 'error');
+      toastStore.error('Load Failed', err?.message || String(err));
     } finally {
       isLoading = false;
     }
@@ -48,11 +48,11 @@
     try {
       await SaveProjectFile(projectDir, filePath, rawText);
       originalText = rawText;
-      toastStore.addToast(`Saved ${filePath}`, 'success');
+      toastStore.success('File Saved', filePath);
       // Re-inspect in background to update structural metrics
-      inspection = await InspectProjectFile(projectDir, filePath);
+      inspection = (await InspectProjectFile(projectDir, filePath)) as any;
     } catch (err: any) {
-      toastStore.addToast(`Failed to save: ${err?.message || err}`, 'error');
+      toastStore.error('Save Failed', err?.message || String(err));
     } finally {
       isSaving = false;
     }
@@ -93,7 +93,7 @@
 
   function copyContent() {
     navigator.clipboard.writeText(rawText);
-    toastStore.addToast('Copied content to clipboard', 'info');
+    toastStore.info('Copied', 'Content copied to clipboard');
   }
 
   function getCategoryColor(category: string) {
@@ -215,10 +215,10 @@
               {#each inspection.sections as sec}
                 <button
                   type="button"
-                  class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-mono transition truncate {selectedSection === sec.Name ? 'bg-brand-600 text-white font-bold' : 'text-slate-300 hover:bg-dark-800 hover:text-white'}"
-                  on:click={() => jumpToSection(sec.Name)}
+                  class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-mono transition truncate {selectedSection === sec.name ? 'bg-brand-600 text-white font-bold' : 'text-slate-300 hover:bg-dark-800 hover:text-white'}"
+                  on:click={() => jumpToSection(sec.name)}
                 >
-                  [{sec.Name}]
+                  [{sec.name}]
                 </button>
               {/each}
             </div>

@@ -54,13 +54,18 @@
 
   function handleSelectTab(tab: 'projects' | 'vault' | 'engines' | 'settings') {
     if (tab === 'projects') {
-      if (activeTab === 'projects') {
+      if (!$projectStore.current) {
         projectsSubView = 'list';
-      } else if (!$projectStore.current) {
-        projectsSubView = 'list';
+      } else if (activeTab !== 'projects') {
+        projectsSubView = 'workspace';
       }
     }
     activeTab = tab;
+  }
+
+  function handleNavigateSubView(subView: string) {
+    activeTab = 'projects';
+    projectsSubView = subView as any;
   }
 
   function handleOpenProjectWorkspace() {
@@ -179,8 +184,11 @@
   <!-- Left Sidebar (Unity Hub Style) -->
   <Sidebar
     {activeTab}
+    {projectsSubView}
     onSelectTab={handleSelectTab}
     onOpenProjectWorkspace={handleOpenProjectWorkspace}
+    onNavigateSubView={handleNavigateSubView}
+    onBackToProjectsList={handleBackToProjectsList}
   />
 
   <!-- Main View Area -->
