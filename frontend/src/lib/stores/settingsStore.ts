@@ -49,6 +49,17 @@ export const THEME_PRESETS: ThemePreset[] = [
     tag: 'TOURNAMENT',
   },
   {
+    id: 'gothic',
+    name: 'Gothic Noir',
+    subtitle: 'Monochrome & Crimson Blood',
+    description: 'High-contrast stark monochrome black & white architecture with visceral crimson red blood accents.',
+    accentHex: '#ef4444',
+    bgHex: '#080808',
+    cardHex: '#141414',
+    borderHex: '#383838',
+    tag: 'GOTHIC NOIR',
+  },
+  {
     id: 'light',
     name: 'Clean Studio',
     subtitle: 'Modern Light Mode',

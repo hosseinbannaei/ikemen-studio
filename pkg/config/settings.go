@@ -12,6 +12,7 @@ import (
 type Settings struct {
 	EnginesDir          string   `json:"enginesDir"`
 	Theme               string   `json:"theme"`
+	RadiusStyle         string   `json:"radiusStyle,omitempty"`
 	RecentProjects      []string `json:"recentProjects"`
 	DefaultChannel      string   `json:"defaultChannel"`
 	RegisteredVaults    []string `json:"registeredVaults"`

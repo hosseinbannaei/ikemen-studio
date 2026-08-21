@@ -20,7 +20,8 @@
     Moon,
     Sun,
     Zap,
-    Trophy
+    Trophy,
+    Skull
   } from 'lucide-svelte';
 
   let enginesDir = '';
@@ -67,6 +68,8 @@
         return Zap;
       case 'capcom':
         return Trophy;
+      case 'gothic':
+        return Skull;
       case 'light':
         return Sun;
       default:
@@ -186,7 +189,26 @@
         </p>
       </div>
 
-      <div class="grid grid-cols-3 gap-3 pt-1">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+        <!-- Square / Zero Radius -->
+        <button
+          type="button"
+          class="p-3.5 rounded-none border text-left transition {
+            $settingsStore.radiusStyle === 'none'
+              ? 'bg-dark-750 border-brand-500 ring-2 ring-brand-500/50'
+              : 'bg-dark-900 border-dark-600/70 hover:border-dark-500'
+          }"
+          on:click={() => settingsStore.setRadius('none')}
+        >
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-slate-200">Square (No Radius)</span>
+            {#if $settingsStore.radiusStyle === 'none'}
+              <Check class="w-3.5 h-3.5 text-brand-400" />
+            {/if}
+          </div>
+          <p class="text-[10px] text-slate-400">0px radius. Pure razor-sharp edges and flat hard corners.</p>
+        </button>
+
         <!-- Sharp / Brutalist (MKX) -->
         <button
           type="button"
@@ -203,7 +225,7 @@
               <Check class="w-3.5 h-3.5 text-brand-400" />
             {/if}
           </div>
-          <p class="text-[10px] text-slate-400">0px – 2px radius. Crisp technical fighting game arcade feel.</p>
+          <p class="text-[10px] text-slate-400">2px – 4px radius. Crisp technical fighting game arcade feel.</p>
         </button>
 
         <!-- Subtle Minimal -->

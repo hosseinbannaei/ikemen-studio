@@ -17,7 +17,7 @@ import {
   SelectMultipleArchivesDialog,
   SelectDirectoryDialog,
 } from '../../../wailsjs/go/main/App';
-import { EventsOn } from '../../../wailsjs/runtime/runtime';
+import { EventsOn, OnFileDrop } from '../../../wailsjs/runtime/runtime';
 import { toastStore } from './toastStore';
 
 interface VaultState {
@@ -52,8 +52,8 @@ function createVaultStore() {
   function initDropEvents() {
     if (eventsInitialized) return;
     try {
-      if (typeof window !== 'undefined' && (window as any).runtime) {
-        EventsOn('wails-file-drop', async (paths: string[]) => {
+      if (typeof window !== 'undefined') {
+        const handlePaths = async (paths: string[]) => {
           if (paths && paths.length > 0) {
             toastStore.info('Files Dropped', `Importing ${paths.length} file(s)/folder(s)...`);
             let targetVault = 'vault-default';
@@ -63,8 +63,29 @@ function createVaultStore() {
             });
             await ingestMultiple(paths, targetVault, 'auto');
           }
-        });
-        eventsInitialized = true;
+        };
+
+        if ((window as any).runtime) {
+          try {
+            OnFileDrop((x: number, y: number, paths: string[]) => {
+              handlePaths(paths);
+            }, false);
+          } catch (e) {
+            console.warn('OnFileDrop error:', e);
+          }
+
+          try {
+            EventsOn('wails-file-drop', (paths: string[]) => {
+              handlePaths(paths);
+            });
+          } catch (e) {
+            console.warn('EventsOn error:', e);
+          }
+
+          eventsInitialized = true;
+        } else {
+          setTimeout(initDropEvents, 100);
+        }
       }
     } catch (e) {
       console.warn('Wails file drop event init error:', e);

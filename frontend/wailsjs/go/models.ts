@@ -62,6 +62,7 @@ export namespace config {
 	export class Settings {
 	    enginesDir: string;
 	    theme: string;
+	    radiusStyle?: string;
 	    recentProjects: string[];
 	    defaultChannel: string;
 	    registeredVaults: string[];
@@ -75,6 +76,7 @@ export namespace config {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.enginesDir = source["enginesDir"];
 	        this.theme = source["theme"];
+	        this.radiusStyle = source["radiusStyle"];
 	        this.recentProjects = source["recentProjects"];
 	        this.defaultChannel = source["defaultChannel"];
 	        this.registeredVaults = source["registeredVaults"];

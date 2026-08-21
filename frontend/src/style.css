@@ -77,6 +77,24 @@ html[data-theme="capcom"] {
   color-scheme: dark;
 }
 
+/* Theme: Gothic Noir (Monochrome Black & White with Red Accent) */
+html[data-theme="gothic"] {
+  --bg-app-darker-rgb: 0 0 0;        /* Pure pitch black */
+  --bg-app-rgb: 8 8 8;              /* Deep obsidian dark */
+  --bg-sidebar-rgb: 12 12 12;       /* Slate black sidebar */
+  --bg-surface-rgb: 18 18 18;       /* Charcoal panel surface */
+  --bg-hover-rgb: 30 30 30;         /* Stark monochrome hover */
+  --bg-card-rgb: 20 20 20;          /* Gothic card chassis */
+  --bg-border-rgb: 56 56 56;        /* High-contrast silver/gray border */
+
+  --brand-400-rgb: 248 113 113;     /* #f87171 blood red highlight */
+  --brand-500-rgb: 239 68 68;       /* #ef4444 vivid crimson red */
+  --brand-600-rgb: 220 38 38;       /* #dc2626 gothic deep red */
+  --brand-700-rgb: 185 28 28;       /* #b91c1c visceral red */
+  --brand-950-rgb: 69 10 10;        /* #450a0a dark blood shade */
+  color-scheme: dark;
+}
+
 /* Theme: Clean Studio (Light) */
 html[data-theme="light"],
 html.light {
@@ -97,6 +115,16 @@ html.light {
 }
 
 /* Corner Radius Modes */
+html[data-radius="none"],
+html[data-radius="square"] {
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+}
+
 :root,
 html[data-radius="sharp"],
 html:not([data-radius]) {

@@ -3,6 +3,7 @@
   import { projectStore } from './lib/stores/projectStore';
   import { engineStore } from './lib/stores/engineStore';
   import { settingsStore } from './lib/stores/settingsStore';
+  import { vaultStore } from './lib/stores/vaultStore';
 
   import Sidebar from './lib/components/Sidebar.svelte';
   import Breadcrumb from './lib/components/Breadcrumb.svelte';
@@ -42,6 +43,7 @@
   let showOpenProjectModal = false;
 
   onMount(async () => {
+    vaultStore.initDropEvents();
     await settingsStore.load();
     await engineStore.loadInstalled();
     await projectStore.loadRecent();

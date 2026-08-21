@@ -187,20 +187,9 @@
     }
   }
 
-  async function handleDrop(e: DragEvent) {
+  function handleDrop(e: DragEvent) {
     e.preventDefault();
     isDraggingOver = false;
-    if (e.dataTransfer && e.dataTransfer.files.length > 0) {
-      const files = Array.from(e.dataTransfer.files);
-      const paths: string[] = [];
-      for (const file of files) {
-        const path = (file as any).path || file.name;
-        if (path) paths.push(path);
-      }
-      if (paths.length > 0) {
-        await vaultStore.ingestMultiple(paths, $vaultStore.activeVaultId, 'auto');
-      }
-    }
   }
 
   async function handleCleanVault() {

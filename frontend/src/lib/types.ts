@@ -40,8 +40,8 @@ export interface InstalledEngine {
   size: number;
 }
 
-export type ThemeId = 'mkx' | 'obsidian' | 'cyber' | 'capcom' | 'light';
-export type RadiusStyle = 'sharp' | 'subtle' | 'rounded';
+export type ThemeId = 'mkx' | 'obsidian' | 'cyber' | 'capcom' | 'gothic' | 'light';
+export type RadiusStyle = 'none' | 'sharp' | 'subtle' | 'rounded';
 
 export interface ThemePreset {
   id: ThemeId;
