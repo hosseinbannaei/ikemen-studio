@@ -16,9 +16,19 @@ Ikemen GO Studio streamlines the creation, management, and launching of Ikemen G
 
 ---
 
-## AI Development Transparency Notice
+> [!WARNING]
+> ### Project Status: Inactive / On Hold
+> Development on Ikemen GO Studio has been stopped for the foreseeable future.
 
-> **Notice on AI Usage**: This project's architecture, data contracts, and UX decisions are human-led and designed. AI code agents are utilized during development for rapid iteration, boilerplate reduction, and prototyping speed. Every contribution is strictly reviewed and tested.
+### Note from the Creator
+
+> *"Sorry... I guess, I don't know, hope I can do a better job on such things in the future."*
+
+I worked on this project over several days—reaching up to the roster editor and core management features. While it wasn't bad, it didn't become what I originally envisioned (Mostly in technical aspect or... development wise, and somewhat the whole thing itself in general).
+
+It wasn't that I came to dislike the project itself, but that I had no idea how it exactly worked, I knew what systems it had and how most of things worked, but only at a basic level, I decided how most of the systems work and designed them to some extend but... the AI sometimes went ahead and did things that i wasn't sure about how they worked and didn't understand their design or system or whatever as much. I don't really know what I was chasing after, but this wasn't exactly it and it was growing more and more into something i thought i knew what it is but wasn't sure about it. The vibe coding process or how i actually approached it for this project just didn't feel inline with whatever feeling or output I was expecting from myself.
+
+So for now, I've decided to put it to rest, keep searching, and try other things. maybe i should look at things from a different angle, think about other stuff, who knows. The repository is made public for anyone interested in referencing the code or ideas, hope it has some use, that's it for now... I guess.
 
 ---
 
